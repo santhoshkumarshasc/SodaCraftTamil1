@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { getChannel, type ChannelPayload } from "@/lib/youtube.functions";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
@@ -24,23 +24,45 @@ const channelQueryOptions = queryOptions<ChannelPayload>({
 });
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "SodaCraftTamil" },
-      {
-        name: "description",
-        content:
-          "Official portfolio for SodaCraft Tamil. Live subscriber count, latest videos, and social links for the Tamil Minecraft gaming channel.",
-      },
-      { property: "og:title", content: "SodaCraftTamil" },
-      {
-        property: "og:description",
-        content: "Live subs, latest uploads & socials for the SodaCraft Tamil YouTube channel.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: ({ loaderData }) => {
+    const data = loaderData as ChannelPayload | undefined;
+    const title = data?.channel?.title
+      ? `${data.channel.title} - Official Minecraft Tamil Gaming Channel`
+      : "SodaCraft Tamil - Official Minecraft Tamil Gaming Channel";
+
+    const formattedSubs = data?.channel?.subscribers
+      ? Number(data.channel.subscribers).toLocaleString()
+      : "142,000+";
+
+    const description = data?.channel?.description
+      ? `${data.channel.description.slice(0, 150)}... Join ${formattedSubs} subscribers for live sub counts, latest uploads, and community links.`
+      : "Official portfolio for SodaCraft Tamil. Live subscriber count, latest videos, and social links for the Tamil Minecraft gaming channel.";
+
+    const ogImage =
+      data?.channel?.thumbnail ||
+      "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80";
+
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        {
+          name: "keywords",
+          content:
+            "SodaCraft, SodaCraftTamil, SodaCraft Tamil, Minecraft Tamil, Tamil Gaming, Minecraft Live Count, SodaPuttiGamer",
+        },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { property: "og:image", content: ogImage },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+        { name: "twitter:image", content: ogImage },
+        { name: "robots", content: "index, follow" },
+      ],
+    };
+  },
   loader: ({ context }) => context.queryClient.ensureQueryData(channelQueryOptions),
   component: Home,
   errorComponent: ({ error }) => (
@@ -269,6 +291,63 @@ function Home() {
 
   const { data } = useSuspenseQuery(channelQueryOptions);
   const { channel, videos, live, fetchedAt } = data;
+
+  const schemaMarkup = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://sodacrafttamil.com/#website",
+        url: "https://sodacrafttamil.com",
+        name: "SodaCraftTamil",
+        description: channel?.description || "SodaCraft Tamil Gaming Channel Portfolio",
+        publisher: {
+          "@id": "https://sodacrafttamil.com/#organization",
+        },
+      },
+      {
+        "@type": "ProfilePage",
+        "@id": "https://sodacrafttamil.com/#profile",
+        url: "https://sodacrafttamil.com",
+        name: "SodaCraftTamil - Official Website",
+        isPartOf: {
+          "@id": "https://sodacrafttamil.com/#website",
+        },
+        about: {
+          "@id": "https://sodacrafttamil.com/#organization",
+        },
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://sodacrafttamil.com/#organization",
+        name: "SodaCraftTamil",
+        url: "https://www.youtube.com/@SodaCraftTamil",
+        logo: channel?.thumbnail,
+        sameAs: [
+          "https://www.youtube.com/@SodaCraftTamil",
+          "https://www.youtube.com/@SodaPuttiGamer",
+          "https://whatsapp.com/channel/0029Vb8CgorG8l5L5vc28T1W",
+        ],
+      },
+    ],
+  };
+
+  useEffect(() => {
+    if (channel?.thumbnail && typeof window !== "undefined") {
+      const links = document.querySelectorAll("link[rel*='icon']");
+      if (links.length > 0) {
+        links.forEach((link) => {
+          (link as HTMLLinkElement).href = channel.thumbnail;
+        });
+      } else {
+        const link = document.createElement("link");
+        link.rel = "icon";
+        link.href = channel.thumbnail;
+        document.head.appendChild(link);
+      }
+    }
+  }, [channel?.thumbnail]);
+
   const initialTime = fetchedAt ? new Date(fetchedAt).getTime() : 1770000000000;
   const now = useNow(initialTime, 1000);
 
@@ -337,12 +416,12 @@ function Home() {
     }
   }, []);
 
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     if (alertId) {
       setDismissedId(alertId);
       localStorage.setItem("sodacraft_dismissed_alert", alertId);
     }
-  };
+  }, [alertId]);
 
   const showAlert = activeAlert && dismissedId !== alertId;
 
@@ -353,10 +432,16 @@ function Home() {
       }, 10000);
       return () => clearTimeout(timer);
     }
-  }, [showAlert, alertId]);
+  }, [showAlert, alertId, handleDismiss]);
 
   return (
     <div className="min-h-screen bg-[oklch(0.08_0.02_260)] text-white">
+      {/* JSON-LD Structured Data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaMarkup) }}
+      />
+
       {/* ALERT BANNER */}
       <AnimatePresence>
         {showAlert && activeAlert && (
