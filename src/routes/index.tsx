@@ -831,37 +831,53 @@ function Home() {
               </p>
 
               <div className="mt-4 space-y-2 text-xs text-white/70">
-                <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
-                  <span className="text-white/40">Laptop Model</span>
-                  <span className="font-semibold text-white">ASUS Vivobook 15 (2025)</span>
+                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
+                  <span className="text-white/40 shrink-0">Laptop Model</span>
+                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                    ASUS Vivobook 15 (2025)
+                  </span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
-                  <span className="text-white/40">Processor</span>
-                  <span className="font-semibold text-white">Intel Core i3-1315U</span>
+                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
+                  <span className="text-white/40 shrink-0">Processor</span>
+                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                    Intel Core i3-1315U
+                  </span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
-                  <span className="text-white/40">Graphics</span>
-                  <span className="font-semibold text-white">Intel UHD Graphics</span>
+                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
+                  <span className="text-white/40 shrink-0">Graphics</span>
+                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                    Intel UHD Graphics
+                  </span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
-                  <span className="text-white/40">Memory</span>
-                  <span className="font-semibold text-white">8GB DDR4 RAM</span>
+                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
+                  <span className="text-white/40 shrink-0">Memory</span>
+                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                    8GB DDR4 RAM
+                  </span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
-                  <span className="text-white/40">Storage</span>
-                  <span className="font-semibold text-white">512GB PCIe NVMe SSD</span>
+                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
+                  <span className="text-white/40 shrink-0">Storage</span>
+                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                    512GB PCIe NVMe SSD
+                  </span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
-                  <span className="text-white/40">Kbd & Mouse</span>
-                  <span className="font-semibold text-white">Ant Esports White Combo</span>
+                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
+                  <span className="text-white/40 shrink-0">Kbd & Mouse</span>
+                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                    Ant Esports White Combo
+                  </span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
-                  <span className="text-white/40">Mobile</span>
-                  <span className="font-semibold text-white">Poco C55</span>
+                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
+                  <span className="text-white/40 shrink-0">Mobile</span>
+                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                    Poco C55
+                  </span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-1.5">
-                  <span className="text-white/40">Headset</span>
-                  <span className="font-semibold text-white">Cosmic Byte Headphone</span>
+                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
+                  <span className="text-white/40 shrink-0">Headset</span>
+                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                    Cosmic Byte Headphone
+                  </span>
                 </div>
               </div>
             </div>
@@ -870,42 +886,42 @@ function Home() {
               <span className="text-[10px] uppercase tracking-wider font-extrabold text-[oklch(0.75_0.19_25)] block">
                 Purchase Gear / Links
               </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2">
                 <a
                   href="https://amzn.in/d/0hdJwtY6"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2 text-[10px] font-bold text-white transition hover:bg-white/10"
+                  className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2.5 text-[10px] font-bold text-white transition hover:bg-white/10 w-full min-w-0 group"
                 >
-                  <ShoppingCart className="h-3 w-3" />
-                  Vivobook Laptop
+                  <ShoppingCart className="h-3 w-3 shrink-0 text-white/40 group-hover:text-white" />
+                  <span className="truncate">Vivobook Laptop</span>
                 </a>
                 <a
                   href="https://dl.flipkart.com/dl/ant-esports-mk1700-membrane-usb-a-connection-quiet-keystrokes-12-multimedia-function-keys-wired-usb-standard-gaming-keyboard-compatible-desktop-laptop-mac-mode-multimedia-keys-ant-mk-1700-with-backlit-rgb-led/p/itm82786e1229a0c?pid=ACCGUHYQRDTSQPGD&lid=LSTACCGUHYQRDTSQPGDEGEWAF&marketplace=FLIPKART&q=ant+esports+keyboard&store=6bo/tia&srno=s_1_3&otracker=AS_QueryStore_OrganicAutoSuggest_1_6_na_na_na&otracker1=AS_QueryStore_OrganicAutoSuggest_1_6_na_na_na&fm=search-autosuggest&iid=f109df3c-a439-4eb6-89d1-e248e8a86d3d.ACCGUHYQRDTSQPGD.SEARCH&ppt=sp&ppn=sp&ssid=w1ia5ajg3k0000001783952434894&qH=4f107b6efda68308&ov_redirect=true&ov_redirect=true&_refId=&_appId=MR"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2 text-[10px] font-bold text-white transition hover:bg-white/10"
+                  className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2.5 text-[10px] font-bold text-white transition hover:bg-white/10 w-full min-w-0 group"
                 >
-                  <ShoppingCart className="h-3 w-3" />
-                  Ant Esports Combo
+                  <ShoppingCart className="h-3 w-3 shrink-0 text-white/40 group-hover:text-white" />
+                  <span className="truncate">Ant Esports Combo</span>
                 </a>
                 <a
                   href="https://dl.flipkart.com/dl/poco-c55-cool-blue-64-gb/p/itm166c52f5d5dc0?pid=MOBGMXSW55C7ZJE7&lid=LSTMOBGMXSW55C7ZJE7G16NBG&_refId=&_appId=CL"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2 text-[10px] font-bold text-white transition hover:bg-white/10"
+                  className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2.5 text-[10px] font-bold text-white transition hover:bg-white/10 w-full min-w-0 group"
                 >
-                  <ShoppingCart className="h-3 w-3" />
-                  Poco C55 Mobile
+                  <ShoppingCart className="h-3 w-3 shrink-0 text-white/40 group-hover:text-white" />
+                  <span className="truncate">Poco C55 Mobile</span>
                 </a>
                 <a
                   href="https://amzn.in/d/0ewi7wPB"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2 text-[10px] font-bold text-white transition hover:bg-white/10"
+                  className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2.5 text-[10px] font-bold text-white transition hover:bg-white/10 w-full min-w-0 group"
                 >
-                  <ShoppingCart className="h-3 w-3" />
-                  Cosmic Byte Headphone
+                  <ShoppingCart className="h-3 w-3 shrink-0 text-white/40 group-hover:text-white" />
+                  <span className="truncate">Cosmic Byte Headphone</span>
                 </a>
               </div>
             </div>
