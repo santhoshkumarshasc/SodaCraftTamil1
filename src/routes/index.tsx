@@ -16,6 +16,7 @@ import {
   ShoppingCart,
   Sun,
   Moon,
+  Search,
 } from "lucide-react";
 
 const channelQueryOptions = queryOptions<ChannelPayload>({
@@ -831,7 +832,9 @@ function Home() {
               </div>
               <div className="p-4">
                 <h3
-                  className={`line-clamp-2 text-sm font-semibold leading-snug transition-colors duration-150 ${isLight ? "text-slate-800 group-hover:text-red-600" : "text-white"}`}
+                  className={`line-clamp-2 text-sm font-semibold leading-snug transition-colors duration-150 ${
+                    isLight ? "text-slate-800 group-hover:text-red-600" : "text-white"
+                  }`}
                 >
                   {v.title}
                 </h3>

@@ -118,6 +118,64 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent F12
+      if (e.key === "F12") {
+        e.preventDefault();
+        return;
+      }
+
+      // Prevent Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+      if (
+        e.ctrlKey &&
+        e.shiftKey &&
+        (e.key === "I" ||
+          e.key === "i" ||
+          e.key === "J" ||
+          e.key === "j" ||
+          e.key === "C" ||
+          e.key === "c")
+      ) {
+        e.preventDefault();
+        return;
+      }
+
+      // Prevent Ctrl+U (View Source)
+      if (e.ctrlKey && (e.key === "U" || e.key === "u")) {
+        e.preventDefault();
+        return;
+      }
+
+      // Prevent Cmd+Option+I, Cmd+Option+J, Cmd+Option+C (Mac)
+      if (
+        e.metaKey &&
+        e.altKey &&
+        (e.key === "I" ||
+          e.key === "i" ||
+          e.key === "J" ||
+          e.key === "j" ||
+          e.key === "C" ||
+          e.key === "c")
+      ) {
+        e.preventDefault();
+        return;
+      }
+    };
+
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
