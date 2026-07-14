@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -121,12 +122,18 @@ function RootComponent() {
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
+      toast.warning("Right-click is disabled on this studio!", {
+        id: "right-click-disabled",
+      });
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Prevent F12
       if (e.key === "F12") {
         e.preventDefault();
+        toast.warning("Developer tools are disabled!", {
+          id: "dev-tools-disabled",
+        });
         return;
       }
 
@@ -142,12 +149,18 @@ function RootComponent() {
           e.key === "c")
       ) {
         e.preventDefault();
+        toast.warning("Developer tools are disabled!", {
+          id: "dev-tools-disabled",
+        });
         return;
       }
 
       // Prevent Ctrl+U (View Source)
       if (e.ctrlKey && (e.key === "U" || e.key === "u")) {
         e.preventDefault();
+        toast.warning("Viewing page source is disabled!", {
+          id: "dev-tools-disabled",
+        });
         return;
       }
 
@@ -163,16 +176,19 @@ function RootComponent() {
           e.key === "c")
       ) {
         e.preventDefault();
+        toast.warning("Developer tools are disabled!", {
+          id: "dev-tools-disabled",
+        });
         return;
       }
     };
 
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("contextmenu", handleContextMenu, true);
+    document.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("contextmenu", handleContextMenu, true);
+      document.removeEventListener("keydown", handleKeyDown, true);
     };
   }, []);
 
