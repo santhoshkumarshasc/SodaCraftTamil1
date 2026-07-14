@@ -14,6 +14,8 @@ import {
   Calendar,
   Laptop,
   ShoppingCart,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 const channelQueryOptions = queryOptions<ChannelPayload>({
@@ -149,7 +151,15 @@ function timeAgo(iso: string, now: number) {
   return `${Math.floor(mo / 12)}y ago`;
 }
 
-function AnimatedCounter({ value, highlight }: { value: number; highlight?: boolean }) {
+function AnimatedCounter({
+  value,
+  highlight,
+  isLight,
+}: {
+  value: number;
+  highlight?: boolean;
+  isLight?: boolean;
+}) {
   const [displayValue, setDisplayValue] = useState(value);
   const prevValueRef = useRef(value);
   const [pulseCount, setPulseCount] = useState(0);
@@ -245,7 +255,9 @@ function AnimatedCounter({ value, highlight }: { value: number; highlight?: bool
                 scale: [1, 1.15, 1],
                 color: highlight
                   ? ["#ffffff", "#fef08a", "#ffffff"]
-                  : ["#ffffff", "#4ade80", "#ffffff"],
+                  : isLight
+                    ? ["#0f172a", "#16a34a", "#0f172a"]
+                    : ["#ffffff", "#4ade80", "#ffffff"],
                 textShadow: highlight
                   ? [
                       "0 0 0px rgba(254,240,138,0)",
@@ -285,9 +297,23 @@ function AnimatedCounter({ value, highlight }: { value: number; highlight?: bool
 
 function Home() {
   const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
   useEffect(() => {
     setMounted(true);
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "light" || savedTheme === "dark") {
+      setTheme(savedTheme);
+    }
   }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("theme", nextTheme);
+  };
+
+  const isLight = theme === "light";
 
   const { data } = useSuspenseQuery(channelQueryOptions);
   const { channel, videos, live, fetchedAt } = data;
@@ -435,7 +461,9 @@ function Home() {
   }, [showAlert, alertId, handleDismiss]);
 
   return (
-    <div className="min-h-screen bg-[oklch(0.08_0.02_260)] text-white">
+    <div
+      className={`min-h-screen transition-colors duration-300 ${isLight ? "bg-[oklch(0.97_0.01_240)] text-slate-900" : "bg-[oklch(0.08_0.02_260)] text-white"}`}
+    >
       {/* JSON-LD Structured Data for SEO */}
       <script
         type="application/ld+json"
@@ -549,7 +577,9 @@ function Home() {
             }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[oklch(0.08_0.02_260)]/60 to-[oklch(0.08_0.02_260)]" />
+        <div
+          className={`absolute inset-0 transition-all duration-300 ${isLight ? "bg-gradient-to-b from-transparent via-[oklch(0.97_0.01_240)]/60 to-[oklch(0.97_0.01_240)]" : "bg-gradient-to-b from-transparent via-[oklch(0.08_0.02_260)]/60 to-[oklch(0.08_0.02_260)]"}`}
+        />
 
         <div className="relative mx-auto max-w-6xl px-6 pt-10 pb-10 sm:pt-14 sm:pb-12">
           <nav className="mb-10 flex items-center justify-between gap-4">
@@ -557,6 +587,18 @@ function Home() {
               SodaCraftTamil<span className="text-[oklch(0.75_0.19_25)]">.</span>
             </span>
             <div className="flex items-center gap-1.5 sm:gap-2">
+              <button
+                onClick={toggleTheme}
+                className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-all duration-300 cursor-pointer border ${
+                  isLight
+                    ? "bg-white hover:bg-slate-100 border-slate-200 text-slate-800 shadow-sm"
+                    : "bg-white/10 hover:bg-white/20 border-white/5 text-white"
+                }`}
+                title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
+                aria-label={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
+              >
+                {isLight ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              </button>
               {live ? (
                 <a
                   href={live.url}
@@ -575,9 +617,16 @@ function Home() {
                   href="https://www.youtube.com/@SodaCraftTamil/videos"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-white/20 sm:gap-1.5 sm:px-4 sm:py-2 sm:text-sm"
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold backdrop-blur transition sm:gap-1.5 sm:px-4 sm:py-2 sm:text-sm ${
+                    isLight
+                      ? "bg-slate-200/80 hover:bg-slate-300/80 text-slate-800"
+                      : "bg-white/10 hover:bg-white/20 text-white"
+                  }`}
                 >
-                  <svg className="h-3.5 w-3.5 fill-white sm:h-4 sm:w-4" viewBox="0 0 24 24">
+                  <svg
+                    className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isLight ? "fill-slate-800" : "fill-white"}`}
+                    viewBox="0 0 24 24"
+                  >
                     <path d="M8 5v14l11-7z" />
                   </svg>
                   Watch
@@ -633,7 +682,9 @@ function Home() {
                 className={`mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium backdrop-blur ${
                   live
                     ? "bg-red-600/20 text-red-200 ring-1 ring-red-500/50"
-                    : "bg-white/5 text-white/70"
+                    : isLight
+                      ? "bg-slate-200/80 text-slate-700"
+                      : "bg-white/5 text-white/70"
                 }`}
               >
                 <span className="relative flex h-2 w-2">
@@ -642,8 +693,14 @@ function Home() {
                 </span>
                 {live ? "LIVE NOW" : "LIVE STATS"}
               </div>
-              <h1 className="text-4xl font-black tracking-tight sm:text-6xl">{channel.title}</h1>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/60 sm:text-base">
+              <h1
+                className={`text-4xl font-black tracking-tight sm:text-6xl ${isLight ? "text-slate-900" : "text-white"}`}
+              >
+                {channel.title}
+              </h1>
+              <p
+                className={`mt-4 max-w-2xl text-sm leading-relaxed sm:text-base ${isLight ? "text-slate-600" : "text-white/60"}`}
+              >
                 {channel.description.split("\n")[0] || "Tamil gaming & Minecraft content creator."}
               </p>
             </div>
@@ -654,7 +711,11 @@ function Home() {
               href={live.url}
               target="_blank"
               rel="noreferrer"
-              className="mt-8 flex items-center gap-4 rounded-2xl bg-gradient-to-r from-red-600/30 to-red-900/10 p-4 ring-1 ring-red-500/40 transition hover:from-red-600/40"
+              className={`mt-8 flex items-center gap-4 rounded-2xl p-4 transition ${
+                isLight
+                  ? "bg-red-50 border border-red-200/60 shadow-sm hover:bg-red-100/50"
+                  : "bg-gradient-to-r from-red-600/30 to-red-900/10 ring-1 ring-red-500/40 hover:from-red-600/40"
+              }`}
             >
               <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded-lg bg-black">
                 <img
@@ -668,7 +729,9 @@ function Home() {
                 </span>
               </div>
               <div className="min-w-0 flex-1 text-left">
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-red-300">
+                <div
+                  className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest ${isLight ? "text-red-600" : "text-red-300"}`}
+                >
                   <span>Streaming now</span>
                   {live.concurrentViewers && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-red-600/40 px-2 py-0.5 text-red-100">
@@ -679,10 +742,14 @@ function Home() {
                     </span>
                   )}
                 </div>
-                <div className="mt-0.5 line-clamp-2 text-sm font-semibold">{live.title}</div>
+                <div
+                  className={`mt-0.5 line-clamp-2 text-sm font-semibold ${isLight ? "text-slate-800" : "text-white"}`}
+                >
+                  {live.title}
+                </div>
               </div>
 
-              <div className="hidden shrink-0 rounded-full bg-red-600 px-4 py-2 text-xs font-bold sm:block">
+              <div className="hidden shrink-0 rounded-full bg-red-600 px-4 py-2 text-xs font-bold text-white sm:block">
                 Watch →
               </div>
             </a>
@@ -694,9 +761,18 @@ function Home() {
               label="Subscribers"
               value={parseInt(channel.subscribers, 10) || 0}
               highlight
+              isLight={isLight}
             />
-            <StatCard label="Total Views" value={parseInt(channel.views, 10) || 0} />
-            <StatCard label="Videos" value={parseInt(channel.videoCount, 10) || 0} />
+            <StatCard
+              label="Total Views"
+              value={parseInt(channel.views, 10) || 0}
+              isLight={isLight}
+            />
+            <StatCard
+              label="Videos"
+              value={parseInt(channel.videoCount, 10) || 0}
+              isLight={isLight}
+            />
           </div>
         </div>
       </section>
@@ -705,8 +781,14 @@ function Home() {
       <section className="mx-auto max-w-6xl px-6 py-16">
         <div className="mb-8 flex items-end justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Latest Videos</h2>
-            <p className="mt-1 text-sm text-white/50">Fresh uploads from the channel</p>
+            <h2
+              className={`text-3xl font-bold tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}
+            >
+              Latest Videos
+            </h2>
+            <p className={`mt-1 text-sm ${isLight ? "text-slate-500" : "text-white/50"}`}>
+              Fresh uploads from the channel
+            </p>
           </div>
           <a
             href={`https://www.youtube.com/@SodaCraftTamil/videos`}
@@ -725,7 +807,11 @@ function Home() {
               href={v.url}
               target="_blank"
               rel="noreferrer"
-              className="group overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10 transition hover:ring-[oklch(0.65_0.24_25)]"
+              className={`group overflow-hidden rounded-2xl transition hover:ring-[oklch(0.65_0.24_25)] ${
+                isLight
+                  ? "bg-white border border-slate-200 shadow-sm text-slate-800"
+                  : "bg-white/5 ring-1 ring-white/10"
+              }`}
             >
               <div className="relative aspect-video overflow-hidden bg-black">
                 <img
@@ -744,8 +830,12 @@ function Home() {
                 </div>
               </div>
               <div className="p-4">
-                <h3 className="line-clamp-2 text-sm font-semibold leading-snug">{v.title}</h3>
-                <p className="mt-2 text-xs text-white/50">
+                <h3
+                  className={`line-clamp-2 text-sm font-semibold leading-snug transition-colors duration-150 ${isLight ? "text-slate-800 group-hover:text-red-600" : "text-white"}`}
+                >
+                  {v.title}
+                </h3>
+                <p className={`mt-2 text-xs ${isLight ? "text-slate-500" : "text-white/50"}`}>
                   {mounted ? timeAgo(v.publishedAt, now) : "recently"}
                 </p>
               </div>
@@ -758,124 +848,236 @@ function Home() {
       <section className="mx-auto max-w-6xl px-6 pb-16">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* ABOUT TEXT CARD */}
-          <div className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10 flex flex-col justify-between">
+          <div
+            className={`rounded-2xl p-6 flex flex-col justify-between ${
+              isLight
+                ? "bg-white border border-slate-200 shadow-sm"
+                : "bg-white/5 ring-1 ring-white/10"
+            }`}
+          >
             <div>
-              <h2 className="text-2xl font-bold tracking-tight">About SodaCraft</h2>
-              <div className="mt-4 text-sm leading-relaxed text-white/70 line-clamp-[8] sm:line-clamp-none">
+              <h2
+                className={`text-2xl font-bold tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}
+              >
+                About SodaCraft
+              </h2>
+              <div
+                className={`mt-4 text-sm leading-relaxed line-clamp-[8] sm:line-clamp-none ${isLight ? "text-slate-600" : "text-white/70"}`}
+              >
                 {channel.description ||
                   "Official portfolio for SodaCraft Tamil. Live subscriber count, latest videos, and social links for the Tamil Minecraft gaming channel."}
               </div>
             </div>
-            <div className="mt-6 rounded-xl bg-white/5 p-4 border border-white/5 text-center">
-              <span className="text-xs font-bold text-white block">Official Space</span>
-              <p className="mt-1 text-[11px] text-white/50">
+            <div
+              className={`mt-6 rounded-xl p-4 text-center ${
+                isLight ? "bg-slate-50 border border-slate-200" : "bg-white/5 border border-white/5"
+              }`}
+            >
+              <span
+                className={`text-xs font-bold block ${isLight ? "text-slate-800" : "text-white"}`}
+              >
+                Official Space
+              </span>
+              <p className={`mt-1 text-[11px] ${isLight ? "text-slate-500" : "text-white/50"}`}>
                 Tracking statistics, real-time streams, and content.
               </p>
             </div>
           </div>
 
           {/* CHANNEL INFO STATS */}
-          <div className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10 flex flex-col justify-between">
+          <div
+            className={`rounded-2xl p-6 flex flex-col justify-between ${
+              isLight
+                ? "bg-white border border-slate-200 shadow-sm"
+                : "bg-white/5 ring-1 ring-white/10"
+            }`}
+          >
             <div>
-              <h3 className="text-lg font-bold">Channel Info</h3>
-              <div className="mt-4 space-y-3 text-sm text-white/70">
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+              <h3 className={`text-lg font-bold ${isLight ? "text-slate-900" : "text-white"}`}>
+                Channel Info
+              </h3>
+              <div
+                className={`mt-4 space-y-3 text-sm ${isLight ? "text-slate-600" : "text-white/70"}`}
+              >
+                <div
+                  className={`flex justify-between items-center border-b pb-2 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
                   <span className="flex items-center gap-2 text-white/40">
                     <Gamepad2 className="h-4 w-4 text-[oklch(0.75_0.19_25)]" />
-                    <span>Niche</span>
+                    <span className={isLight ? "text-slate-400" : "text-white/40"}>Niche</span>
                   </span>
-                  <span className="font-medium text-white">Minecraft & Gaming</span>
+                  <span className={`font-medium ${isLight ? "text-slate-800" : "text-white"}`}>
+                    Minecraft & Gaming
+                  </span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <div
+                  className={`flex justify-between items-center border-b pb-2 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
                   <span className="flex items-center gap-2 text-white/40">
                     <Languages className="h-4 w-4 text-[oklch(0.75_0.19_25)]" />
-                    <span>Language</span>
+                    <span className={isLight ? "text-slate-400" : "text-white/40"}>Language</span>
                   </span>
-                  <span className="font-medium text-white">Tamil (தமிழ்)</span>
+                  <span className={`font-medium ${isLight ? "text-slate-800" : "text-white"}`}>
+                    Tamil (தமிழ்)
+                  </span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <div
+                  className={`flex justify-between items-center border-b pb-2 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
                   <span className="flex items-center gap-2 text-white/40">
                     <Trophy className="h-4 w-4 text-[oklch(0.75_0.19_25)]" />
-                    <span>Sub Goals</span>
+                    <span className={isLight ? "text-slate-400" : "text-white/40"}>Sub Goals</span>
                   </span>
-                  <span className="font-medium text-white">Road to 100K!</span>
+                  <span className={`font-medium ${isLight ? "text-slate-800" : "text-white"}`}>
+                    Road to 100K!
+                  </span>
                 </div>
-                <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <div
+                  className={`flex justify-between items-center border-b pb-2 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
                   <span className="flex items-center gap-2 text-white/40">
                     <Calendar className="h-4 w-4 text-[oklch(0.75_0.19_25)]" />
-                    <span>Active Since</span>
+                    <span className={isLight ? "text-slate-400" : "text-white/40"}>
+                      Active Since
+                    </span>
                   </span>
-                  <span className="font-medium text-white">2025</span>
+                  <span className={`font-medium ${isLight ? "text-slate-800" : "text-white"}`}>
+                    2025
+                  </span>
                 </div>
               </div>
             </div>
-            <div className="mt-6 rounded-xl bg-[oklch(0.65_0.24_25)]/10 p-4 border border-[oklch(0.65_0.24_25)]/20 text-center">
+            <div
+              className={`mt-6 rounded-xl p-4 border text-center ${
+                isLight
+                  ? "bg-[oklch(0.65_0.24_25)]/5 border-[oklch(0.65_0.24_25)]/10"
+                  : "bg-[oklch(0.65_0.24_25)]/10 border-[oklch(0.65_0.24_25)]/20"
+              }`}
+            >
               <span className="text-xs font-bold text-[oklch(0.75_0.19_25)] block">
                 Join the Soda Squad!
               </span>
-              <p className="mt-1 text-xs text-white/60">
+              <p className={`mt-1 text-xs ${isLight ? "text-slate-500" : "text-white/60"}`}>
                 Be part of our amazing Minecraft community.
               </p>
             </div>
           </div>
 
           {/* SETUP & SPECS CARD */}
-          <div className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10 flex flex-col justify-between">
+          <div
+            className={`rounded-2xl p-6 flex flex-col justify-between ${
+              isLight
+                ? "bg-white border border-slate-200 shadow-sm"
+                : "bg-white/5 ring-1 ring-white/10"
+            }`}
+          >
             <div>
               <div className="flex items-center gap-2">
                 <Laptop className="h-5 w-5 text-[oklch(0.75_0.19_25)]" />
-                <h3 className="text-lg font-bold">Gaming & Stream Setup</h3>
+                <h3 className={`text-lg font-bold ${isLight ? "text-slate-900" : "text-white"}`}>
+                  Gaming & Stream Setup
+                </h3>
               </div>
-              <p className="mt-2 text-xs text-white/50">
+              <p className={`mt-2 text-xs ${isLight ? "text-slate-500" : "text-white/50"}`}>
                 Current laptop specifications used for Minecraft streaming and recording.
               </p>
 
-              <div className="mt-4 space-y-2 text-xs text-white/70">
-                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
-                  <span className="text-white/40 shrink-0">Laptop Model</span>
-                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+              <div
+                className={`mt-4 space-y-2 text-xs ${isLight ? "text-slate-600" : "text-white/70"}`}
+              >
+                <div
+                  className={`flex justify-between items-start gap-3 border-b pb-1.5 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
+                  <span className={isLight ? "text-slate-400 shrink-0" : "text-white/40 shrink-0"}>
+                    Laptop Model
+                  </span>
+                  <span
+                    className={`font-semibold text-right break-words min-w-0 max-w-[60%] sm:max-w-none ${isLight ? "text-slate-800" : "text-white"}`}
+                  >
                     ASUS Vivobook 15 (2025)
                   </span>
                 </div>
-                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
-                  <span className="text-white/40 shrink-0">Processor</span>
-                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                <div
+                  className={`flex justify-between items-start gap-3 border-b pb-1.5 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
+                  <span className={isLight ? "text-slate-400 shrink-0" : "text-white/40 shrink-0"}>
+                    Processor
+                  </span>
+                  <span
+                    className={`font-semibold text-right break-words min-w-0 max-w-[60%] sm:max-w-none ${isLight ? "text-slate-800" : "text-white"}`}
+                  >
                     Intel Core i3-1315U
                   </span>
                 </div>
-                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
-                  <span className="text-white/40 shrink-0">Graphics</span>
-                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                <div
+                  className={`flex justify-between items-start gap-3 border-b pb-1.5 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
+                  <span className={isLight ? "text-slate-400 shrink-0" : "text-white/40 shrink-0"}>
+                    Graphics
+                  </span>
+                  <span
+                    className={`font-semibold text-right break-words min-w-0 max-w-[60%] sm:max-w-none ${isLight ? "text-slate-800" : "text-white"}`}
+                  >
                     Intel UHD Graphics
                   </span>
                 </div>
-                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
-                  <span className="text-white/40 shrink-0">Memory</span>
-                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                <div
+                  className={`flex justify-between items-start gap-3 border-b pb-1.5 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
+                  <span className={isLight ? "text-slate-400 shrink-0" : "text-white/40 shrink-0"}>
+                    Memory
+                  </span>
+                  <span
+                    className={`font-semibold text-right break-words min-w-0 max-w-[60%] sm:max-w-none ${isLight ? "text-slate-800" : "text-white"}`}
+                  >
                     8GB DDR4 RAM
                   </span>
                 </div>
-                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
-                  <span className="text-white/40 shrink-0">Storage</span>
-                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                <div
+                  className={`flex justify-between items-start gap-3 border-b pb-1.5 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
+                  <span className={isLight ? "text-slate-400 shrink-0" : "text-white/40 shrink-0"}>
+                    Storage
+                  </span>
+                  <span
+                    className={`font-semibold text-right break-words min-w-0 max-w-[60%] sm:max-w-none ${isLight ? "text-slate-800" : "text-white"}`}
+                  >
                     512GB PCIe NVMe SSD
                   </span>
                 </div>
-                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
-                  <span className="text-white/40 shrink-0">Kbd & Mouse</span>
-                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                <div
+                  className={`flex justify-between items-start gap-3 border-b pb-1.5 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
+                  <span className={isLight ? "text-slate-400 shrink-0" : "text-white/40 shrink-0"}>
+                    Kbd & Mouse
+                  </span>
+                  <span
+                    className={`font-semibold text-right break-words min-w-0 max-w-[60%] sm:max-w-none ${isLight ? "text-slate-800" : "text-white"}`}
+                  >
                     Ant Esports White Combo
                   </span>
                 </div>
-                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
-                  <span className="text-white/40 shrink-0">Mobile</span>
-                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                <div
+                  className={`flex justify-between items-start gap-3 border-b pb-1.5 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
+                  <span className={isLight ? "text-slate-400 shrink-0" : "text-white/40 shrink-0"}>
+                    Mobile
+                  </span>
+                  <span
+                    className={`font-semibold text-right break-words min-w-0 max-w-[60%] sm:max-w-none ${isLight ? "text-slate-800" : "text-white"}`}
+                  >
                     Poco C55
                   </span>
                 </div>
-                <div className="flex justify-between items-start gap-3 border-b border-white/5 pb-1.5">
-                  <span className="text-white/40 shrink-0">Headset</span>
-                  <span className="font-semibold text-white text-right break-words min-w-0 max-w-[60%] sm:max-w-none">
+                <div
+                  className={`flex justify-between items-start gap-3 border-b pb-1.5 ${isLight ? "border-slate-100" : "border-white/5"}`}
+                >
+                  <span className={isLight ? "text-slate-400 shrink-0" : "text-white/40 shrink-0"}>
+                    Headset
+                  </span>
+                  <span
+                    className={`font-semibold text-right break-words min-w-0 max-w-[60%] sm:max-w-none ${isLight ? "text-slate-800" : "text-white"}`}
+                  >
                     Cosmic Byte Headphone
                   </span>
                 </div>
@@ -891,36 +1093,60 @@ function Home() {
                   href="https://amzn.in/d/0hdJwtY6"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2.5 text-[10px] font-bold text-white transition hover:bg-white/10 w-full min-w-0 group"
+                  className={`flex items-center gap-1.5 rounded-lg py-1.5 px-2.5 text-[10px] font-bold transition w-full min-w-0 group border ${
+                    isLight
+                      ? "bg-slate-100 border-slate-200 text-slate-800 hover:bg-slate-200"
+                      : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                  }`}
                 >
-                  <ShoppingCart className="h-3 w-3 shrink-0 text-white/40 group-hover:text-white" />
+                  <ShoppingCart
+                    className={`h-3 w-3 shrink-0 text-white/40 transition group-hover:text-white ${isLight ? "group-hover:text-slate-800 text-slate-400" : ""}`}
+                  />
                   <span className="truncate">Vivobook Laptop</span>
                 </a>
                 <a
                   href="https://dl.flipkart.com/dl/ant-esports-mk1700-membrane-usb-a-connection-quiet-keystrokes-12-multimedia-function-keys-wired-usb-standard-gaming-keyboard-compatible-desktop-laptop-mac-mode-multimedia-keys-ant-mk-1700-with-backlit-rgb-led/p/itm82786e1229a0c?pid=ACCGUHYQRDTSQPGD&lid=LSTACCGUHYQRDTSQPGDEGEWAF&marketplace=FLIPKART&q=ant+esports+keyboard&store=6bo/tia&srno=s_1_3&otracker=AS_QueryStore_OrganicAutoSuggest_1_6_na_na_na&otracker1=AS_QueryStore_OrganicAutoSuggest_1_6_na_na_na&fm=search-autosuggest&iid=f109df3c-a439-4eb6-89d1-e248e8a86d3d.ACCGUHYQRDTSQPGD.SEARCH&ppt=sp&ppn=sp&ssid=w1ia5ajg3k0000001783952434894&qH=4f107b6efda68308&ov_redirect=true&ov_redirect=true&_refId=&_appId=MR"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2.5 text-[10px] font-bold text-white transition hover:bg-white/10 w-full min-w-0 group"
+                  className={`flex items-center gap-1.5 rounded-lg py-1.5 px-2.5 text-[10px] font-bold transition w-full min-w-0 group border ${
+                    isLight
+                      ? "bg-slate-100 border-slate-200 text-slate-800 hover:bg-slate-200"
+                      : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                  }`}
                 >
-                  <ShoppingCart className="h-3 w-3 shrink-0 text-white/40 group-hover:text-white" />
+                  <ShoppingCart
+                    className={`h-3 w-3 shrink-0 text-white/40 transition group-hover:text-white ${isLight ? "group-hover:text-slate-800 text-slate-400" : ""}`}
+                  />
                   <span className="truncate">Ant Esports Combo</span>
                 </a>
                 <a
                   href="https://dl.flipkart.com/dl/poco-c55-cool-blue-64-gb/p/itm166c52f5d5dc0?pid=MOBGMXSW55C7ZJE7&lid=LSTMOBGMXSW55C7ZJE7G16NBG&_refId=&_appId=CL"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2.5 text-[10px] font-bold text-white transition hover:bg-white/10 w-full min-w-0 group"
+                  className={`flex items-center gap-1.5 rounded-lg py-1.5 px-2.5 text-[10px] font-bold transition w-full min-w-0 group border ${
+                    isLight
+                      ? "bg-slate-100 border-slate-200 text-slate-800 hover:bg-slate-200"
+                      : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                  }`}
                 >
-                  <ShoppingCart className="h-3 w-3 shrink-0 text-white/40 group-hover:text-white" />
+                  <ShoppingCart
+                    className={`h-3 w-3 shrink-0 text-white/40 transition group-hover:text-white ${isLight ? "group-hover:text-slate-800 text-slate-400" : ""}`}
+                  />
                   <span className="truncate">Poco C55 Mobile</span>
                 </a>
                 <a
                   href="https://amzn.in/d/0ewi7wPB"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 py-1.5 px-2.5 text-[10px] font-bold text-white transition hover:bg-white/10 w-full min-w-0 group"
+                  className={`flex items-center gap-1.5 rounded-lg py-1.5 px-2.5 text-[10px] font-bold transition w-full min-w-0 group border ${
+                    isLight
+                      ? "bg-slate-100 border-slate-200 text-slate-800 hover:bg-slate-200"
+                      : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                  }`}
                 >
-                  <ShoppingCart className="h-3 w-3 shrink-0 text-white/40 group-hover:text-white" />
+                  <ShoppingCart
+                    className={`h-3 w-3 shrink-0 text-white/40 transition group-hover:text-white ${isLight ? "group-hover:text-slate-800 text-slate-400" : ""}`}
+                  />
                   <span className="truncate">Cosmic Byte Headphone</span>
                 </a>
               </div>
@@ -931,9 +1157,19 @@ function Home() {
 
       {/* SOCIALS */}
       <section className="mx-auto max-w-6xl px-6 pb-24">
-        <div className="rounded-3xl bg-gradient-to-br from-[oklch(0.25_0.15_25)] to-[oklch(0.15_0.08_280)] p-10 text-center">
-          <h2 className="text-3xl font-bold">Connect with SodaCraftTamil</h2>
-          <p className="mt-2 text-white/60">Follow across all platforms for daily updates</p>
+        <div
+          className={`rounded-3xl p-10 text-center ${
+            isLight
+              ? "bg-gradient-to-br from-[oklch(0.94_0.02_25)] to-[oklch(0.97_0.01_260)] border border-slate-200/60 shadow-sm"
+              : "bg-gradient-to-br from-[oklch(0.25_0.15_25)] to-[oklch(0.15_0.08_280)]"
+          }`}
+        >
+          <h2 className={`text-3xl font-bold ${isLight ? "text-slate-900" : "text-white"}`}>
+            Connect with SodaCraftTamil
+          </h2>
+          <p className={`mt-2 ${isLight ? "text-slate-600" : "text-white/60"}`}>
+            Follow across all platforms for daily updates
+          </p>
           <div className="mt-8 flex flex-wrap justify-center gap-2.5">
             {SOCIALS.map((s) => {
               const isBlank = !s.href || s.href.trim() === "" || s.href === "#";
@@ -952,9 +1188,17 @@ function Home() {
                       });
                     }
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-xs font-medium backdrop-blur transition hover:bg-white/20"
+                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium backdrop-blur transition ${
+                    isLight
+                      ? "bg-slate-200/80 hover:bg-slate-300 text-slate-800 animate-none"
+                      : "bg-white/10 hover:bg-white/20 text-white"
+                  }`}
                 >
-                  <svg className="h-4 w-4 fill-white" viewBox="0 0 24 24" aria-hidden>
+                  <svg
+                    className={`h-4 w-4 ${isLight ? "fill-slate-800" : "fill-white"}`}
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                  >
                     <path d={s.icon} />
                   </svg>
                   {s.label}
@@ -965,7 +1209,11 @@ function Home() {
         </div>
 
         {/* MARQUEE FOOTER BAND */}
-        <div className="mt-20 -mx-6 border-y border-white/5 bg-black/30 py-5 backdrop-blur-sm overflow-hidden">
+        <div
+          className={`mt-20 -mx-6 border-y py-5 backdrop-blur-sm overflow-hidden ${
+            isLight ? "border-slate-200 bg-slate-100" : "border-white/5 bg-black/30"
+          }`}
+        >
           <div className="relative flex w-full overflow-x-hidden">
             <div className="animate-marquee whitespace-nowrap flex gap-8 text-sm sm:text-base font-black uppercase tracking-widest select-none">
               {Array(15)
@@ -978,7 +1226,9 @@ function Home() {
                     <img
                       src={channel.thumbnail}
                       alt="Logo"
-                      className="h-5 w-5 rounded-full object-cover border border-white/10 shrink-0"
+                      className={`h-5 w-5 rounded-full object-cover shrink-0 border ${
+                        isLight ? "border-slate-300" : "border-white/10"
+                      }`}
                       referrerPolicy="no-referrer"
                     />
                   </span>
@@ -993,7 +1243,9 @@ function Home() {
                     <img
                       src={channel.thumbnail}
                       alt="Logo"
-                      className="h-5 w-5 rounded-full object-cover border border-white/10 shrink-0"
+                      className={`h-5 w-5 rounded-full object-cover shrink-0 border ${
+                        isLight ? "border-slate-300" : "border-white/10"
+                      }`}
                       referrerPolicy="no-referrer"
                     />
                   </span>
@@ -1002,7 +1254,11 @@ function Home() {
           </div>
         </div>
 
-        <footer className="mt-8 text-center text-xs text-white/30 font-medium tracking-wide">
+        <footer
+          className={`mt-8 text-center text-xs font-medium tracking-wide ${
+            isLight ? "text-slate-400" : "text-white/30"
+          }`}
+        >
           © {new Date().getFullYear()} SodaCraftTamil. All rights reserved.
         </footer>
       </section>
@@ -1014,22 +1270,32 @@ function StatCard({
   label,
   value,
   highlight,
+  isLight,
 }: {
   label: string;
   value: number;
   highlight?: boolean;
+  isLight?: boolean;
 }) {
   return (
     <div
       className={`rounded-2xl p-6 ring-1 backdrop-blur transition ${
         highlight
           ? "bg-gradient-to-br from-[oklch(0.35_0.2_25)] to-[oklch(0.25_0.15_15)] ring-[oklch(0.65_0.24_25)]/50"
-          : "bg-white/5 ring-white/10"
+          : isLight
+            ? "bg-white border border-slate-200 shadow-sm ring-slate-100 text-slate-800"
+            : "bg-white/5 ring-white/10 text-white"
       }`}
     >
-      <div className="text-xs font-medium uppercase tracking-widest text-white/60">{label}</div>
-      <div className="mt-2 text-4xl sm:text-5xl font-black tabular-nums">
-        <AnimatedCounter value={value} highlight={highlight} />
+      <div
+        className={`text-xs font-medium uppercase tracking-widest ${isLight && !highlight ? "text-slate-500" : "text-white/60"}`}
+      >
+        {label}
+      </div>
+      <div
+        className={`mt-2 text-4xl sm:text-5xl font-black tabular-nums ${isLight && !highlight ? "text-slate-900" : "text-white"}`}
+      >
+        <AnimatedCounter value={value} highlight={highlight} isLight={isLight} />
       </div>
     </div>
   );
