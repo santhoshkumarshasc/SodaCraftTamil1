@@ -107,9 +107,42 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9265584196250660"
+          crossOrigin="anonymous"
+        />
       </head>
       <body>
         {children}
+        {/* Hidden Ad unit so it loads in the background but doesn't show in the front */}
+        <div
+          style={{
+            position: "absolute",
+            width: "1px",
+            height: "1px",
+            opacity: 0.01,
+            overflow: "hidden",
+            pointerEvents: "none",
+            zIndex: -9999,
+            left: "-9999px",
+            top: "-9999px",
+          }}
+          aria-hidden="true"
+        >
+          <ins
+            className="adsbygoogle"
+            style={{ display: "block" }}
+            data-ad-client="ca-pub-9265584196250660"
+            data-ad-slot="auto"
+            data-full-width-responsive="true"
+          />
+          <script
+            dangerouslySetInnerHTML={{
+              __html: "(adsbygoogle = window.adsbygoogle || []).push({});",
+            }}
+          />
+        </div>
         <Scripts />
       </body>
     </html>
