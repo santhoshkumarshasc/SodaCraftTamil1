@@ -7,12 +7,18 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "../components/ui/sonner";
+
+declare global {
+  interface Window {
+    adsbygoogle?: unknown[];
+  }
+}
 
 function NotFoundComponent() {
   return (
@@ -115,34 +121,6 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
-        {/* Hidden Ad unit so it loads in the background but doesn't show in the front */}
-        <div
-          style={{
-            position: "absolute",
-            width: "1px",
-            height: "1px",
-            opacity: 0.01,
-            overflow: "hidden",
-            pointerEvents: "none",
-            zIndex: -9999,
-            left: "-9999px",
-            top: "-9999px",
-          }}
-          aria-hidden="true"
-        >
-          <ins
-            className="adsbygoogle"
-            style={{ display: "block" }}
-            data-ad-client="ca-pub-9265584196250660"
-            data-ad-slot="auto"
-            data-full-width-responsive="true"
-          />
-          <script
-            dangerouslySetInnerHTML={{
-              __html: "(adsbygoogle = window.adsbygoogle || []).push({});",
-            }}
-          />
-        </div>
         <Scripts />
       </body>
     </html>
@@ -151,6 +129,22 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      try {
+        window.adsbygoogle = window.adsbygoogle || [];
+        window.adsbygoogle.push({});
+      } catch (e) {
+        console.error("AdSense initialization warning:", e);
+      }
+    }
+  }, [mounted]);
 
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
@@ -230,6 +224,30 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster />
+      {mounted && (
+        <div
+          style={{
+            position: "absolute",
+            width: "1px",
+            height: "1px",
+            opacity: 0.01,
+            overflow: "hidden",
+            pointerEvents: "none",
+            zIndex: -9999,
+            left: "-9999px",
+            top: "-9999px",
+          }}
+          aria-hidden="true"
+        >
+          <ins
+            className="adsbygoogle"
+            style={{ display: "block" }}
+            data-ad-client="ca-pub-9265584196250660"
+            data-ad-slot="auto"
+            data-full-width-responsive="true"
+          />
+        </div>
+      )}
     </QueryClientProvider>
   );
 }
