@@ -1,0 +1,6 @@
+{
+  "name": "SodaCraft Tamil - Official Gaming & Support",
+  "description": "Official gaming channel website and creator support page for SodaCraft Tamil with UPI, GPay, and live supporter board.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { getChannel, type ChannelPayload } from "@/lib/youtube.functions";
@@ -17,6 +17,7 @@ import {
   Sun,
   Moon,
   Search,
+  Heart,
 } from "lucide-react";
 
 const channelQueryOptions = queryOptions<ChannelPayload>({
@@ -633,6 +634,17 @@ function Home() {
                   Watch
                 </a>
               )}
+              <Link
+                to="/support"
+                className={`inline-flex items-center gap-1 sm:gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold backdrop-blur transition sm:px-4 sm:py-2 sm:text-sm border ${
+                  isLight
+                    ? "bg-red-50 hover:bg-red-100 border-red-200 text-[oklch(0.65_0.24_25)]"
+                    : "bg-[oklch(0.65_0.24_25)]/15 hover:bg-[oklch(0.65_0.24_25)]/25 border-[oklch(0.65_0.24_25)]/30 text-[oklch(0.75_0.22_25)]"
+                }`}
+              >
+                <Heart className="h-3.5 w-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
+                <span>Support</span>
+              </Link>
               <a
                 href="https://www.youtube.com/@SodaCraftTamil?sub_confirmation=1"
                 target="_blank"
@@ -1211,6 +1223,42 @@ function Home() {
           </div>
         </div>
 
+        {/* SUPPORT THE CHANNEL PROMO BANNER */}
+        <div
+          className={`mt-16 rounded-3xl p-6 sm:p-8 border shadow-xl relative overflow-hidden transition ${
+            isLight
+              ? "bg-gradient-to-br from-red-50 via-white to-orange-50 border-red-200 text-slate-900"
+              : "bg-gradient-to-br from-red-950/40 via-[oklch(0.12_0.03_260)] to-orange-950/30 border-red-500/20 text-white"
+          }`}
+        >
+          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+            <div className="max-w-xl">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[oklch(0.65_0.24_25)]/10 text-[oklch(0.75_0.22_25)] border border-[oklch(0.65_0.24_25)]/20 mb-3">
+                <Heart className="w-3.5 h-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
+                <span>Support the Streamer</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black tracking-tight">
+                Support via Google Pay & UPI
+              </h3>
+              <p
+                className={`mt-2 text-xs sm:text-sm ${
+                  isLight ? "text-slate-600" : "text-slate-300"
+                }`}
+              >
+                Contribute via UPI QR code, help fund our Minecraft SMP server & equipment, and get
+                your name automatically added to our live supporters board!
+              </p>
+            </div>
+            <Link
+              to="/support"
+              className="shrink-0 inline-flex items-center gap-2 rounded-2xl bg-[oklch(0.65_0.24_25)] hover:bg-[oklch(0.7_0.24_25)] px-6 py-3.5 text-sm font-extrabold text-white shadow-xl shadow-red-500/25 transition transform hover:scale-105 active:scale-95"
+            >
+              <Heart className="w-4 h-4 fill-white" />
+              <span>Go to Support Page</span>
+            </Link>
+          </div>
+        </div>
+
         {/* MARQUEE FOOTER BAND */}
         <div
           className={`mt-20 -mx-6 border-y py-5 backdrop-blur-sm overflow-hidden ${
@@ -1258,11 +1306,19 @@ function Home() {
         </div>
 
         <footer
-          className={`mt-8 text-center text-xs font-medium tracking-wide ${
+          className={`mt-8 text-center text-xs font-medium tracking-wide flex flex-col sm:flex-row items-center justify-center gap-3 ${
             isLight ? "text-slate-400" : "text-white/30"
           }`}
         >
-          © {new Date().getFullYear()} SodaCraftTamil. All rights reserved.
+          <span>© {new Date().getFullYear()} SodaCraftTamil. All rights reserved.</span>
+          <span className="hidden sm:inline">•</span>
+          <Link
+            to="/support"
+            className="hover:underline text-[oklch(0.75_0.22_25)] font-semibold inline-flex items-center gap-1"
+          >
+            <Heart className="w-3.5 h-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
+            <span>Support via GPay & UPI</span>
+          </Link>
         </footer>
       </section>
     </div>
