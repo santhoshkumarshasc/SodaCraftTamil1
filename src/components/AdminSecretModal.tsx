@@ -24,6 +24,7 @@ import {
   RotateCcw,
   AlertTriangle,
   Sliders,
+  Copy,
 } from "lucide-react";
 import {
   getAdminConfig,
@@ -96,6 +97,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
   const [newLinkHref, setNewLinkHref] = useState("");
   const [newPresetAmount, setNewPresetAmount] = useState("");
   const [newPasscode, setNewPasscode] = useState("");
+  const [urlTokenInput, setUrlTokenInput] = useState(config.urlToken || "custom");
 
   const fetchRealtimeData = useCallback(
     async (tokenToUse?: string) => {
@@ -119,6 +121,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
         const dbConfig = await getDbConfigFn();
         if (dbConfig) {
           setConfig(dbConfig);
+          setUrlTokenInput(dbConfig.urlToken || "custom");
           saveAdminConfig(dbConfig);
         }
       } catch (err) {
@@ -201,17 +204,45 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
     toast.info("Admin session locked.");
   };
 
+  const handleUpdateUrlToken = async () => {
+    const clean = urlTokenInput.trim() || "custom";
+    const updated = { ...config, urlToken: clean };
+    setConfig(updated);
+    if (sessionToken) {
+      try {
+        await saveDbConfigFn({
+          data: {
+            token: sessionToken,
+            config: { urlToken: clean },
+          },
+        });
+        saveAdminConfig(updated);
+        toast.success(`✅ Secret URL Token updated to: ?token=${clean}`);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to save URL token to database");
+      }
+    } else {
+      saveAdminConfig(updated);
+      toast.success(`URL token updated to: ?token=${clean}`);
+    }
+  };
+
   const handleSaveAll = async () => {
     try {
+      const mergedConfig = {
+        ...config,
+        urlToken: urlTokenInput.trim() || config.urlToken || "custom",
+      };
       if (sessionToken) {
         await saveDbConfigFn({
           data: {
             token: sessionToken,
-            config,
+            config: mergedConfig,
           },
         });
       }
-      saveAdminConfig(config);
+      saveAdminConfig(mergedConfig);
       toast.success("✅ Admin settings saved to database & applied instantly!");
       onClose();
     } catch (err) {
@@ -473,6 +504,17 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
             </div>
 
             <div className="flex items-center gap-2">
+              <a
+                href={`/admin?token=${encodeURIComponent(urlTokenInput || config.urlToken || "custom")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white/90 transition flex items-center gap-1.5 cursor-pointer"
+                title="Open Dashboard in Separate Tab"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Separate Tab</span>
+              </a>
+
               {isAuthenticated && (
                 <>
                   <button
@@ -528,7 +570,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                     type="text"
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
-                    placeholder="admin or rtmgamertamil@gmail.com"
+                    placeholder="Enter Admin Username or Email"
                     autoFocus
                     className={`w-full py-2.5 px-4 rounded-xl text-sm font-medium border outline-none transition ${
                       isLight
@@ -547,7 +589,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                       type={showPassword ? "text" : "password"}
                       value={passwordInput}
                       onChange={(e) => setPasswordInput(e.target.value)}
-                      placeholder="Enter Admin Password or Code (9629)"
+                      placeholder="Enter Admin Password"
                       className={`w-full py-2.5 px-4 pr-11 rounded-xl text-sm font-medium border outline-none transition ${
                         isLight
                           ? "bg-slate-100 border-slate-300 text-slate-900 focus:border-red-500"
@@ -565,18 +607,11 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsernameInput("admin");
-                      setPasswordInput("9629");
-                    }}
-                    className="text-[oklch(0.75_0.22_25)] hover:underline font-semibold cursor-pointer"
-                  >
-                    Use Default Master Code (9629)
-                  </button>
                   <span className={`text-[11px] ${isLight ? "text-slate-400" : "text-white/40"}`}>
                     Protected Database Access
+                  </span>
+                  <span className="text-[11px] text-emerald-400 font-medium">
+                    Verified SodaCraft Portal
                   </span>
                 </div>
 
@@ -1499,22 +1534,115 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                 {/* TAB 5: SECURITY & PASSCODE */}
                 {activeTab === "security" && (
                   <div className="space-y-6">
-                    <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 space-y-2">
-                      <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>Master Access Token & URL</span>
-                      </h4>
-                      <p className="text-xs text-white/70">
-                        Remember: The dashboard is hidden from all public pages. You can only open
-                        it by appending:
+                    {/* URL Token Management Card */}
+                    <div className="p-4 sm:p-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 space-y-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-amber-400" />
+                          <span>Secret URL Access Token (?token=...)</span>
+                        </h4>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono">
+                          ?token={urlTokenInput || "custom"}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-white/80 leading-relaxed">
+                        Change the URL token used to access the admin portal. You can use any custom
+                        word like <code className="text-emerald-400 font-mono">custom</code> or your
+                        own secret phrase.
                       </p>
-                      <div className="p-2.5 rounded-xl bg-black/40 border border-white/10 font-mono text-xs text-emerald-400 select-all">
-                        ?token=Secrettoken
+
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                          URL Token Value:
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-white/40">
+                              ?token=
+                            </span>
+                            <input
+                              type="text"
+                              value={urlTokenInput}
+                              onChange={(e) => setUrlTokenInput(e.target.value)}
+                              placeholder="custom"
+                              className="w-full pl-18 pr-4 py-2 rounded-xl text-sm bg-black/40 border border-white/15 text-white font-mono outline-none focus:border-amber-400"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleUpdateUrlToken}
+                            className="py-2 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition cursor-pointer"
+                          >
+                            Save Token
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Quick Links & Copy */}
+                      <div className="space-y-2 pt-2 border-t border-amber-500/20">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-white/70 block">
+                          Access URLs:
+                        </label>
+
+                        {/* Separate Tab Admin URL */}
+                        <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs">
+                          <div className="truncate font-mono text-emerald-400">
+                            https://sodacrafttamil.vercel.app/admin?token=
+                            {urlTokenInput || "custom"}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(
+                                  `${window.location.origin}/admin?token=${urlTokenInput || "custom"}`,
+                                );
+                                toast.success("Copied separate tab Admin URL!");
+                              }}
+                              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition cursor-pointer"
+                              title="Copy URL"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <a
+                              href={`/admin?token=${encodeURIComponent(urlTokenInput || "custom")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition flex items-center gap-1 font-bold text-[11px]"
+                              title="Open in Separate Tab"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Open</span>
+                            </a>
+                          </div>
+                        </div>
+
+                        {/* Home Modal URL */}
+                        <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs">
+                          <div className="truncate font-mono text-white/70">
+                            https://sodacrafttamil.vercel.app/?token={urlTokenInput || "custom"}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(
+                                `${window.location.origin}/?token=${urlTokenInput || "custom"}`,
+                              );
+                              toast.success("Copied homepage secret token URL!");
+                            }}
+                            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition cursor-pointer"
+                            title="Copy URL"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <label className="text-xs font-bold uppercase tracking-wider opacity-80">
+                    {/* Master Secret Passcode */}
+                    <div className="p-4 sm:p-5 rounded-2xl border border-white/10 bg-white/5 space-y-3">
+                      <label className="text-xs font-bold uppercase tracking-wider opacity-80 block">
                         Update Master Secret Passcode:
                       </label>
                       <div className="flex items-center gap-2">
@@ -1523,16 +1651,20 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           value={newPasscode}
                           onChange={(e) => setNewPasscode(e.target.value)}
                           placeholder="Enter new 4+ character secret code"
-                          className="flex-1 px-4 py-2.5 rounded-xl text-sm bg-black/30 border border-white/10 text-white outline-none"
+                          className="flex-1 px-4 py-2.5 rounded-xl text-sm bg-black/30 border border-white/10 text-white outline-none focus:border-[oklch(0.65_0.24_25)]"
                         />
                         <button
                           type="button"
                           onClick={handleUpdatePasscode}
-                          className="py-2.5 px-4 rounded-xl bg-[oklch(0.65_0.24_25)] hover:bg-[oklch(0.7_0.24_25)] text-white text-xs font-bold transition cursor-pointer"
+                          className="py-2.5 px-4 rounded-xl bg-[oklch(0.65_0.24_25)] hover:bg-[oklch(0.7_0.24_25)] text-white text-xs font-bold transition cursor-pointer shrink-0"
                         >
                           Update Code
                         </button>
                       </div>
+                      <p className="text-[11px] text-white/50">
+                        Current Master Passcode:{" "}
+                        <span className="font-mono text-white/80">{config.secretCode}</span>
+                      </p>
                     </div>
                   </div>
                 )}

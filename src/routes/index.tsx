@@ -319,11 +319,17 @@ function AnimatedCounter({
 }
 
 function Home() {
+  const loaderData = Route.useLoaderData();
+  const { data } = useSuspenseQuery({
+    ...channelQueryOptions,
+    initialData: loaderData,
+  });
+  const search = Route.useSearch();
+  const { config } = useAdminConfig();
+
   const [mounted, setMounted] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const { config } = useAdminConfig();
-  const search = Route.useSearch();
 
   useEffect(() => {
     setMounted(true);
@@ -332,16 +338,22 @@ function Home() {
       setTheme(savedTheme);
     }
 
-    // Dashboard only opens with token=Secrettoken
+    // Dashboard opens with ?token=custom or configured urlToken or Secrettoken
     const tokenVal =
       search?.token ||
       (typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("token")
         : null);
-    if (tokenVal && tokenVal.toLowerCase() === "secrettoken") {
+    const configuredToken = (config.urlToken || "custom").toLowerCase();
+    if (
+      tokenVal &&
+      (tokenVal.toLowerCase() === configuredToken ||
+        tokenVal.toLowerCase() === "custom" ||
+        tokenVal.toLowerCase() === "secrettoken")
+    ) {
       setIsAdminOpen(true);
     }
-  }, [search?.token]);
+  }, [search?.token, config.urlToken]);
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -350,12 +362,6 @@ function Home() {
   };
 
   const isLight = theme === "light";
-
-  const loaderData = Route.useLoaderData();
-  const { data } = useSuspenseQuery({
-    ...channelQueryOptions,
-    initialData: loaderData,
-  });
   const { channel, videos, live, fetchedAt } = data;
 
   const schemaMarkup = {
@@ -1401,23 +1407,40 @@ function Home() {
         </div>
 
         <footer
-          className={`mt-8 text-center text-xs font-medium tracking-wide flex flex-col sm:flex-row items-center justify-center gap-3 ${
-            isLight ? "text-slate-400" : "text-white/30"
+          className={`mt-10 pt-6 border-t text-center text-xs font-medium tracking-wide flex flex-col items-center justify-center gap-3 ${
+            isLight ? "border-slate-200 text-slate-500" : "border-white/10 text-white/40"
           }`}
         >
-          <span>© {new Date().getFullYear()} SodaCraftTamil. All rights reserved.</span>
-          {config.supportButtonEnabled && (
-            <>
-              <span className="hidden sm:inline">•</span>
-              <Link
-                to="/support"
-                className="hover:underline text-[oklch(0.75_0.22_25)] font-semibold inline-flex items-center gap-1"
-              >
-                <Heart className="w-3.5 h-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
-                <span>Support SodaCraft Tamil</span>
-              </Link>
-            </>
-          )}
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <Link to="/terms" className="hover:text-emerald-400 transition">
+              Terms & Conditions
+            </Link>
+            <span>•</span>
+            <Link to="/privacy" className="hover:text-emerald-400 transition">
+              Privacy Policy
+            </Link>
+            <span>•</span>
+            <Link to="/refund" className="hover:text-emerald-400 transition">
+              Refund Policy
+            </Link>
+            <span>•</span>
+            <Link to="/contact" className="hover:text-emerald-400 transition">
+              Contact Us
+            </Link>
+            {config.supportButtonEnabled && (
+              <>
+                <span>•</span>
+                <Link
+                  to="/support"
+                  className="hover:underline text-[oklch(0.75_0.22_25)] font-semibold inline-flex items-center gap-1"
+                >
+                  <Heart className="w-3.5 h-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
+                  <span>Support SodaCraft Tamil</span>
+                </Link>
+              </>
+            )}
+          </div>
+          <div>© {new Date().getFullYear()} SodaCraftTamil. All rights reserved.</div>
         </footer>
       </section>
 

@@ -120,13 +120,19 @@ function SupportPage() {
       setTheme(savedTheme);
     }
 
-    // Dashboard only opens with ?token=Secrettoken
+    // Dashboard opens with ?token=custom or configured urlToken or Secrettoken
     const tokenVal =
       search?.token ||
       (typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("token")
         : null);
-    if (tokenVal && tokenVal.toLowerCase() === "secrettoken") {
+    const configuredToken = (config.urlToken || "custom").toLowerCase();
+    if (
+      tokenVal &&
+      (tokenVal.toLowerCase() === configuredToken ||
+        tokenVal.toLowerCase() === "custom" ||
+        tokenVal.toLowerCase() === "secrettoken")
+    ) {
       setIsAdminOpen(true);
     }
 
@@ -139,7 +145,7 @@ function SupportPage() {
     } catch {
       // Ignore JSON parse errors
     }
-  }, [search?.token]);
+  }, [search?.token, config.urlToken]);
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -776,11 +782,28 @@ function SupportPage() {
           </div>
 
           <footer
-            className={`mt-10 text-xs font-medium tracking-wide ${
-              isLight ? "text-slate-400" : "text-white/30"
+            className={`mt-10 pt-6 border-t text-xs font-medium tracking-wide flex flex-col items-center justify-center gap-3 ${
+              isLight ? "border-slate-200 text-slate-500" : "border-white/10 text-white/40"
             }`}
           >
-            © {new Date().getFullYear()} SodaCraft Tamil. Official Creator Support Page.
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+              <Link to="/terms" className="hover:text-emerald-400 transition">
+                Terms & Conditions
+              </Link>
+              <span>•</span>
+              <Link to="/privacy" className="hover:text-emerald-400 transition">
+                Privacy Policy
+              </Link>
+              <span>•</span>
+              <Link to="/refund" className="hover:text-emerald-400 transition">
+                Refund Policy
+              </Link>
+              <span>•</span>
+              <Link to="/contact" className="hover:text-emerald-400 transition">
+                Contact Us
+              </Link>
+            </div>
+            <div>© {new Date().getFullYear()} SodaCraft Tamil. Official Creator Support Page.</div>
           </footer>
         </section>
       </div>

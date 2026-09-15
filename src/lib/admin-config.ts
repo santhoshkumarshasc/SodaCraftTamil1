@@ -32,8 +32,9 @@ export interface AdminSiteConfig {
   razorpayKeyId?: string;
   razorpayKeySecret?: string;
 
-  // Secret passcode
+  // Secret passcode & URL Token
   secretCode: string;
+  urlToken?: string;
 }
 
 export const DEFAULT_ADMIN_CONFIG: AdminSiteConfig = {
@@ -105,6 +106,7 @@ export const DEFAULT_ADMIN_CONFIG: AdminSiteConfig = {
   razorpayKeyId: "rzp_live_Tc8MHDDnSr3cwl",
   razorpayKeySecret: "42rJlLTF0hJc1exM4t7JOLGY",
   secretCode: "9629",
+  urlToken: "custom",
 };
 
 const STORAGE_KEY = "sodacraft_admin_config_v1";

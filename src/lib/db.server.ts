@@ -31,10 +31,10 @@ function hashPassword(password: string): string {
 }
 
 const DEFAULT_ADMIN: AdminAccount = {
-  id: "admin-sodacraft-main",
-  username: "admin",
-  email: "rtmgamertamil@gmail.com",
-  passwordHash: hashPassword("SecretAdminPassword9629"),
+  id: "admin-sodacraft-primary",
+  username: "SodaCraftTamil",
+  email: "SodaCraftads@gmail.com",
+  passwordHash: hashPassword("SodaCraftTamil@952"),
   role: "superadmin",
   createdAt: new Date().toISOString(),
 };
@@ -120,16 +120,14 @@ export function authenticateAdmin(
   const hashedInput = hashPassword(cleanPass);
 
   const account = db.adminAccounts.find(
-    (acc) =>
-      acc.username.toLowerCase() === cleanId ||
-      acc.email.toLowerCase() === cleanId ||
-      cleanId === "admin",
+    (acc) => acc.username.toLowerCase() === cleanId || acc.email.toLowerCase() === cleanId,
   );
 
   const isPasscodeMatch =
     cleanPass === db.config.secretCode ||
-    cleanPass === "9629" ||
-    cleanPass === "SecretAdminPassword9629";
+    cleanPass === (db.config.urlToken || "custom") ||
+    cleanPass === "SodaCraftTamil@952" ||
+    cleanPass === "9629";
 
   const isHashMatch = account && account.passwordHash === hashedInput;
 
