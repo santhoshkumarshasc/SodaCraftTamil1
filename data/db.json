@@ -1,0 +1,97 @@
+{
+  "adminAccounts": [
+    {
+      "id": "admin-sodacraft-main",
+      "username": "admin",
+      "email": "rtmgamertamil@gmail.com",
+      "passwordHash": "356b3ac27573f9d78be4cd1ba0070c5a8fc40a85802be0359ce6e242b7ccf901",
+      "role": "superadmin",
+      "createdAt": "2026-09-15T01:26:11.716Z",
+      "lastLoginAt": "2026-09-15T01:34:38.271Z"
+    }
+  ],
+  "config": {
+    "supportButtonEnabled": true,
+    "supportButtonLabel": "Support",
+    "socialLinks": [
+      {
+        "id": "sodaputti",
+        "label": "SodaPuttiGamer",
+        "href": "https://www.youtube.com/@SodaPuttiGamer",
+        "enabled": true
+      },
+      {
+        "id": "sodacraft",
+        "label": "SodaCraftTamil",
+        "href": "https://www.youtube.com/@SodaCraftTamil",
+        "enabled": true
+      },
+      {
+        "id": "sodacraft2",
+        "label": "SodaCraftTamil 2.O",
+        "href": "https://www.youtube.com/@SodaCraftTamil2.0",
+        "enabled": true
+      },
+      {
+        "id": "instagram",
+        "label": "Instagram",
+        "href": "https://www.instagram.com/sodacrafttamil",
+        "enabled": true
+      },
+      {
+        "id": "discord",
+        "label": "Discord",
+        "href": "https://discord.com/invite/XRUkfZnpfv",
+        "enabled": true
+      },
+      {
+        "id": "facebook",
+        "label": "Facebook",
+        "href": "",
+        "enabled": false
+      },
+      {
+        "id": "whatsapp",
+        "label": "WhatsApp",
+        "href": "https://whatsapp.com/channel/0029Vb8CgorG8l5L5vc28T1W",
+        "enabled": true
+      },
+      {
+        "id": "twitter",
+        "label": "X / Twitter",
+        "href": "",
+        "enabled": false
+      }
+    ],
+    "liveStreamUrl": "",
+    "subscribeUrl": "https://www.youtube.com/@SodaCraftTamil?sub_confirmation=1",
+    "latestVideosUrl": "https://www.youtube.com/@SodaCraftTamil/videos",
+    "presetAmounts": [
+      50,
+      100,
+      250,
+      500,
+      1000
+    ],
+    "monthlyGoal": 15000,
+    "goalTitle": "Monthly SMP Server & Stream Fund",
+    "upiId": "santhoshkumarshasc@oksbi",
+    "payeeName": "SodaCraft Tamil",
+    "whatsappNumber": "919629123982",
+    "supportTitle": "Support SodaCraft Tamil",
+    "supportSubtitle": "Fuel next-level Minecraft Tamil adventures, SMP episodes & high-FPS live streams",
+    "paymentNote": "Support SodaCraft Tamil Gaming",
+    "razorpayKeyId": "rzp_live_Tc8MHDDnSr3cwl",
+    "razorpayKeySecret": "42rJlLTF0hJc1exM4t7JOLGY",
+    "secretCode": "9629"
+  },
+  "supporters": [],
+  "sessions": [
+    {
+      "token": "adm_token_1789436078271_3453cdd3e1dde2cc16fa292509123b64",
+      "accountId": "admin-sodacraft-main",
+      "expiresAt": 1790040878271
+    }
+  ],
+  "lastUpdated": 1789436078271
+}

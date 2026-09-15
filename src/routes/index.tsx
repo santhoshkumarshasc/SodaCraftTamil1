@@ -32,6 +32,9 @@ const channelQueryOptions = queryOptions<ChannelPayload>({
 });
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    token: typeof search.token === "string" ? search.token : undefined,
+  }),
   head: ({ loaderData }) => {
     const data = loaderData as ChannelPayload | undefined;
     const title = data?.channel?.title
@@ -320,6 +323,7 @@ function Home() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const { config } = useAdminConfig();
+  const search = Route.useSearch();
 
   useEffect(() => {
     setMounted(true);
@@ -328,17 +332,16 @@ function Home() {
       setTheme(savedTheme);
     }
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        (e.shiftKey && e.key.toLowerCase() === "a") ||
-        (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "s")
-      ) {
-        setIsAdminOpen(true);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    // Dashboard only opens with token=Secrettoken
+    const tokenVal =
+      search?.token ||
+      (typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("token")
+        : null);
+    if (tokenVal && tokenVal.toLowerCase() === "secrettoken") {
+      setIsAdminOpen(true);
+    }
+  }, [search?.token]);
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -693,18 +696,6 @@ function Home() {
               >
                 Subscribe
               </a>
-              <button
-                onClick={() => setIsAdminOpen(true)}
-                className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-all duration-300 cursor-pointer border ${
-                  isLight
-                    ? "bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-sm"
-                    : "bg-white/10 hover:bg-white/20 border-white/5 text-white/80"
-                }`}
-                title="Admin Secret Code Dashboard (9629)"
-                aria-label="Admin Dashboard"
-              >
-                <Lock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
-              </button>
             </div>
           </nav>
 
@@ -1423,19 +1414,10 @@ function Home() {
                 className="hover:underline text-[oklch(0.75_0.22_25)] font-semibold inline-flex items-center gap-1"
               >
                 <Heart className="w-3.5 h-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
-                <span>Support via GPay & UPI</span>
+                <span>Support SodaCraft Tamil</span>
               </Link>
             </>
           )}
-          <span className="hidden sm:inline">•</span>
-          <button
-            onClick={() => setIsAdminOpen(true)}
-            className="hover:underline text-amber-400 font-semibold inline-flex items-center gap-1 cursor-pointer"
-            title="Open Admin Dashboard (Code: 9629)"
-          >
-            <Lock className="w-3.5 h-3.5" />
-            <span>Admin Code</span>
-          </button>
         </footer>
       </section>
 

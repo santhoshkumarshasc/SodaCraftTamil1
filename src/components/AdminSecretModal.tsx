@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import {
@@ -6,20 +6,24 @@ import {
   Unlock,
   KeyRound,
   X,
-  Check,
-  RotateCcw,
-  Sliders,
-  Link as LinkIcon,
-  IndianRupee,
-  ShieldCheck,
   Plus,
   Trash2,
   Eye,
   EyeOff,
-  ExternalLink,
   Power,
-  Heart,
   Save,
+  Users,
+  Receipt,
+  RefreshCw,
+  IndianRupee,
+  Link as LinkIcon,
+  ShieldCheck,
+  CheckCircle2,
+  UserPlus,
+  ExternalLink,
+  RotateCcw,
+  AlertTriangle,
+  Sliders,
 } from "lucide-react";
 import {
   getAdminConfig,
@@ -28,6 +32,18 @@ import {
   type AdminSiteConfig,
   type SiteSocialLink,
 } from "@/lib/admin-config";
+import {
+  adminLoginAccountFn,
+  getDbConfigFn,
+  saveDbConfigFn,
+  getAdminAccountsFn,
+  createAdminAccountFn,
+  deleteAdminAccountFn,
+  getAdminPaymentsFn,
+  resetGoalPaymentsFn,
+  deletePaymentFn,
+} from "@/lib/admin.functions";
+import type { Supporter } from "@/lib/support.functions";
 
 interface AdminSecretModalProps {
   isOpen: boolean;
@@ -37,59 +53,223 @@ interface AdminSecretModalProps {
 
 export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecretModalProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passcodeInput, setPasscodeInput] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [config, setConfig] = useState<AdminSiteConfig>(getAdminConfig());
-  const [activeTab, setActiveTab] = useState<"toggle" | "links" | "amounts" | "security">("toggle");
+  const [sessionToken, setSessionToken] = useState<string>("");
+  const [currentAccount, setCurrentAccount] = useState<{
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+  } | null>(null);
 
-  // New Link temporary state
+  // Login Form States
+  const [usernameInput, setUsernameInput] = useState("admin");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Tabs
+  const [activeTab, setActiveTab] = useState<
+    "support" | "realtime" | "links" | "accounts" | "security"
+  >("support");
+
+  // Support details & Goal action states
+  const [showSecretKey, setShowSecretKey] = useState(false);
+  const [isResettingGoal, setIsResettingGoal] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Database Data States
+  const [config, setConfig] = useState<AdminSiteConfig>(getAdminConfig());
+  const [payments, setPayments] = useState<Supporter[]>([]);
+  const [adminAccounts, setAdminAccounts] = useState<
+    { id: string; username: string; email: string; role: string; createdAt: string }[]
+  >([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // New Account Form
+  const [newAccUser, setNewAccUser] = useState("");
+  const [newAccEmail, setNewAccEmail] = useState("");
+  const [newAccPass, setNewAccPass] = useState("");
+  const [newAccRole, setNewAccRole] = useState<"admin" | "superadmin">("admin");
+
+  // New Link & Preset temporary state
   const [newLinkLabel, setNewLinkLabel] = useState("");
   const [newLinkHref, setNewLinkHref] = useState("");
   const [newPresetAmount, setNewPresetAmount] = useState("");
-
-  // New Passcode temporary state
   const [newPasscode, setNewPasscode] = useState("");
+
+  const fetchRealtimeData = useCallback(
+    async (tokenToUse?: string) => {
+      const token = tokenToUse || sessionToken;
+      if (!token) return;
+      setIsRefreshing(true);
+      try {
+        // 1. Fetch Payments in real-time
+        const paymentsRes = await getAdminPaymentsFn({ data: { token } });
+        if (paymentsRes.success) {
+          setPayments(paymentsRes.supporters);
+        }
+
+        // 2. Fetch Admin Accounts
+        const accountsRes = await getAdminAccountsFn({ data: { token } });
+        if (accountsRes.success) {
+          setAdminAccounts(accountsRes.accounts);
+        }
+
+        // 3. Fetch latest Config
+        const dbConfig = await getDbConfigFn();
+        if (dbConfig) {
+          setConfig(dbConfig);
+          saveAdminConfig(dbConfig);
+        }
+      } catch (err) {
+        console.error("Error fetching real-time admin data:", err);
+      } finally {
+        setIsRefreshing(false);
+      }
+    },
+    [sessionToken],
+  );
 
   useEffect(() => {
     if (isOpen) {
-      const currentConfig = getAdminConfig();
-      setConfig(currentConfig);
-      // Check session authentication
-      const sessionAuth = sessionStorage.getItem("sodacraft_admin_authenticated");
-      if (sessionAuth === "true") {
+      const savedToken = sessionStorage.getItem("sodacraft_admin_token");
+      if (savedToken) {
+        setSessionToken(savedToken);
         setIsAuthenticated(true);
+        fetchRealtimeData(savedToken);
       } else {
         setIsAuthenticated(false);
-        setPasscodeInput("");
+        setPasswordInput("");
       }
     }
-  }, [isOpen]);
+  }, [isOpen, fetchRealtimeData]);
 
-  const handleVerifyPasscode = (e?: React.FormEvent) => {
+  // Real-time polling when modal is open and authenticated
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated || !sessionToken) return;
+    const interval = setInterval(() => {
+      fetchRealtimeData();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isOpen, isAuthenticated, sessionToken, fetchRealtimeData]);
+
+  const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const currentConfig = getAdminConfig();
-    const cleanInput = passcodeInput.trim();
+    if (!passwordInput.trim()) {
+      toast.error("Please enter password or passcode");
+      return;
+    }
+    setIsLoggingIn(true);
+    try {
+      const res = await adminLoginAccountFn({
+        data: {
+          identifier: usernameInput.trim(),
+          secret: passwordInput.trim(),
+        },
+      });
 
-    if (cleanInput === currentConfig.secretCode || cleanInput === "9629") {
-      setIsAuthenticated(true);
-      sessionStorage.setItem("sodacraft_admin_authenticated", "true");
-      toast.success("🔓 Admin access granted! Welcome Creator.");
-      setPasscodeInput("");
-    } else {
-      toast.error("❌ Incorrect secret code. Try default: 9629");
+      if (res.success && res.token) {
+        setSessionToken(res.token);
+        setIsAuthenticated(true);
+        if (res.account) {
+          setCurrentAccount(res.account);
+        }
+        sessionStorage.setItem("sodacraft_admin_token", res.token);
+        sessionStorage.setItem("sodacraft_admin_authenticated", "true");
+        toast.success("🔓 Admin access granted! Connected to live database.");
+        setPasswordInput("");
+        fetchRealtimeData(res.token);
+      } else {
+        toast.error(
+          res.message || "Invalid credentials. Hint: Passcode 9629 or SecretAdminPassword9629",
+        );
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      toast.error("Connection error while logging in");
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setSessionToken("");
+    setCurrentAccount(null);
+    sessionStorage.removeItem("sodacraft_admin_token");
     sessionStorage.removeItem("sodacraft_admin_authenticated");
     toast.info("Admin session locked.");
   };
 
-  const handleSaveAll = () => {
-    saveAdminConfig(config);
-    toast.success("✅ Admin settings saved & applied across the website!");
-    onClose();
+  const handleSaveAll = async () => {
+    try {
+      if (sessionToken) {
+        await saveDbConfigFn({
+          data: {
+            token: sessionToken,
+            config,
+          },
+        });
+      }
+      saveAdminConfig(config);
+      toast.success("✅ Admin settings saved to database & applied instantly!");
+      onClose();
+    } catch (err) {
+      console.error("Save config error:", err);
+      toast.error("Failed to save settings to database");
+    }
+  };
+
+  const handleCreateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAccUser.trim() || !newAccPass.trim()) {
+      toast.error("Username and password are required");
+      return;
+    }
+    try {
+      const res = await createAdminAccountFn({
+        data: {
+          token: sessionToken,
+          username: newAccUser,
+          email: newAccEmail,
+          password: newAccPass,
+          role: newAccRole,
+        },
+      });
+      if (res.success) {
+        toast.success(`Admin account "${newAccUser}" created in database!`);
+        setNewAccUser("");
+        setNewAccEmail("");
+        setNewAccPass("");
+        fetchRealtimeData();
+      } else {
+        toast.error(res.message || "Failed to create account");
+      }
+    } catch (err) {
+      console.error("Create account error:", err);
+      toast.error("Error creating account");
+    }
+  };
+
+  const handleDeleteAccount = async (id: string, username: string) => {
+    if (!confirm(`Delete admin account "${username}" from database?`)) return;
+    try {
+      const res = await deleteAdminAccountFn({
+        data: {
+          token: sessionToken,
+          accountId: id,
+        },
+      });
+      if (res.success) {
+        toast.success(`Account "${username}" removed.`);
+        fetchRealtimeData();
+      } else {
+        toast.error(res.message || "Cannot delete account");
+      }
+    } catch (err) {
+      console.error("Delete account error:", err);
+      toast.error("Error deleting account");
+    }
   };
 
   const handleResetDefaults = () => {
@@ -97,6 +277,52 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
       const def = resetAdminConfig();
       setConfig(def);
       toast.info("Reset to default configuration.");
+    }
+  };
+
+  const handleResetGoalPayments = async () => {
+    setIsResettingGoal(true);
+    try {
+      if (sessionToken) {
+        const res = await resetGoalPaymentsFn({ data: { token: sessionToken } });
+        if (res.success) {
+          setPayments([]);
+          toast.success("✅ Payment in goal successfully reset to ₹0!");
+          setShowResetConfirm(false);
+          await fetchRealtimeData();
+          return;
+        }
+      }
+      setPayments([]);
+      toast.success("Payment in goal reset to ₹0.");
+      setShowResetConfirm(false);
+    } catch (err) {
+      console.error("Reset goal payments error:", err);
+      toast.error("Failed to reset goal payments");
+    } finally {
+      setIsResettingGoal(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: string, name: string, amount: number) => {
+    if (!confirm(`Delete payment transaction of ₹${amount} from "${name}"?`)) return;
+    try {
+      if (sessionToken) {
+        const res = await deletePaymentFn({ data: { token: sessionToken, paymentId } });
+        if (res.success) {
+          toast.success(`Removed transaction of ₹${amount}`);
+          setPayments((prev) =>
+            prev.filter((p) => p.id !== paymentId && p.paymentId !== paymentId),
+          );
+          fetchRealtimeData();
+          return;
+        }
+      }
+      setPayments((prev) => prev.filter((p) => p.id !== paymentId && p.paymentId !== paymentId));
+      toast.success("Transaction removed");
+    } catch (err) {
+      console.error("Delete payment error:", err);
+      toast.error("Failed to delete transaction");
     }
   };
 
@@ -150,13 +376,15 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
       return;
     }
     if (config.presetAmounts.includes(val)) {
-      toast.error("This preset already exists");
+      toast.error("Amount already exists");
       return;
     }
-    const updated = [...config.presetAmounts, val].sort((a, b) => a - b);
-    setConfig((prev) => ({ ...prev, presetAmounts: updated }));
+    setConfig((prev) => ({
+      ...prev,
+      presetAmounts: [...prev.presetAmounts, val].sort((a, b) => a - b),
+    }));
     setNewPresetAmount("");
-    toast.success(`Added ₹${val} preset!`);
+    toast.success(`Added ₹${val} preset`);
   };
 
   const handleRemovePreset = (val: number) => {
@@ -166,41 +394,45 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
     }
     setConfig((prev) => ({
       ...prev,
-      presetAmounts: prev.presetAmounts.filter((p) => p !== val),
+      presetAmounts: prev.presetAmounts.filter((a) => a !== val),
     }));
   };
 
-  const handleChangePasscode = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdatePasscode = () => {
     if (!newPasscode.trim() || newPasscode.trim().length < 4) {
-      toast.error("Secret code must be at least 4 characters");
+      toast.error("Passcode must be at least 4 characters");
       return;
     }
-    setConfig((prev) => ({ ...prev, secretCode: newPasscode.trim() }));
+    setConfig((prev) => ({
+      ...prev,
+      secretCode: newPasscode.trim(),
+    }));
     setNewPasscode("");
     toast.success("Secret code updated! Remember your new code.");
   };
 
   if (!isOpen) return null;
 
+  const totalRaised = payments.reduce((sum, p) => sum + p.amount, 0);
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/80 backdrop-blur-md"
+          className="fixed inset-0 bg-black/85 backdrop-blur-md"
         />
 
         {/* Modal Window */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.96, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className={`relative w-full max-w-2xl rounded-3xl border shadow-2xl overflow-hidden my-8 ${
+          exit={{ opacity: 0, scale: 0.96, y: 15 }}
+          className={`relative w-full max-w-3xl rounded-3xl border shadow-2xl overflow-hidden my-6 ${
             isLight
               ? "bg-white border-slate-200 text-slate-800"
               : "bg-[oklch(0.12_0.02_260)] border-white/10 text-white"
@@ -214,46 +446,60 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
           >
             <div className="flex items-center gap-3">
               <div
-                className={`p-2 rounded-xl ${
+                className={`p-2.5 rounded-xl ${
                   isAuthenticated
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : "bg-[oklch(0.65_0.24_25)]/20 text-[oklch(0.75_0.22_25)]"
+                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                    : "bg-[oklch(0.65_0.24_25)]/20 text-[oklch(0.75_0.22_25)] border border-[oklch(0.65_0.24_25)]/30"
                 }`}
               >
                 {isAuthenticated ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
               </div>
               <div>
                 <h2 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
-                  <span>Creator Secret Dashboard</span>
+                  <span>SodaCraft Admin Dashboard</span>
                   {isAuthenticated && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-wider">
-                      Unlocked
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Live Database
                     </span>
                   )}
                 </h2>
                 <p className={`text-xs ${isLight ? "text-slate-500" : "text-white/50"}`}>
                   {isAuthenticated
-                    ? "Live control of Support button, Links & Details"
-                    : "Enter secret passkey to access creator controls"}
+                    ? `Logged in as ${currentAccount?.username || "Admin"} • Real-time Razorpay & Account Database`
+                    : "Database-backed Admin Login (Accessed via Secret Token)"}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               {isAuthenticated && (
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
-                  title="Lock Dashboard"
-                >
-                  Lock
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => fetchRealtimeData()}
+                    disabled={isRefreshing}
+                    className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                    title="Refresh Real-time Data"
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 ${isRefreshing ? "animate-spin text-emerald-400" : ""}`}
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition cursor-pointer"
+                    title="Lock Dashboard"
+                  >
+                    Lock Session
+                  </button>
+                </>
               )}
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -262,63 +508,89 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
 
           {/* Body Content */}
           {!isAuthenticated ? (
-            /* Passcode Verification Screen */
+            /* Admin Login Account Screen */
             <div className="p-6 sm:p-8 max-w-md mx-auto text-center">
-              <div className="mx-auto w-14 h-14 rounded-2xl bg-[oklch(0.65_0.24_25)]/15 border border-[oklch(0.65_0.24_25)]/30 flex items-center justify-center text-[oklch(0.75_0.22_25)] mb-4">
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-[oklch(0.65_0.24_25)]/15 border border-[oklch(0.65_0.24_25)]/30 flex items-center justify-center text-[oklch(0.75_0.22_25)] mb-4 shadow-lg shadow-red-500/10">
                 <KeyRound className="w-7 h-7" />
               </div>
 
-              <h3 className="text-xl font-black mb-1">Enter Secret Code</h3>
+              <h3 className="text-xl font-black mb-1">Admin Database Login</h3>
               <p className={`text-xs mb-6 ${isLight ? "text-slate-500" : "text-white/60"}`}>
-                Authorized for SodaCraft Tamil administrator only
+                Sign in to manage Razorpay payments, real-time receipts & admin accounts
               </p>
 
-              <form onSubmit={handleVerifyPasscode} className="space-y-4">
-                <div className="relative">
+              <form onSubmit={handleLogin} className="space-y-4 text-left">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-80">
+                    Username or Admin Email:
+                  </label>
                   <input
-                    type={showPassword ? "text" : "password"}
-                    value={passcodeInput}
-                    onChange={(e) => setPasscodeInput(e.target.value)}
-                    placeholder="Enter Secret Code"
+                    type="text"
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value)}
+                    placeholder="admin or rtmgamertamil@gmail.com"
                     autoFocus
-                    className={`w-full text-center py-3.5 px-12 rounded-xl text-lg tracking-widest font-mono font-bold border outline-none transition ${
+                    className={`w-full py-2.5 px-4 rounded-xl text-sm font-medium border outline-none transition ${
                       isLight
                         ? "bg-slate-100 border-slate-300 text-slate-900 focus:border-red-500"
                         : "bg-black/40 border-white/15 text-white focus:border-[oklch(0.65_0.24_25)]"
                     }`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
                 </div>
 
-                <div className="flex items-center justify-between text-xs px-1">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-80">
+                    Password / Master Passcode:
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      placeholder="Enter Admin Password or Code (9629)"
+                      className={`w-full py-2.5 px-4 pr-11 rounded-xl text-sm font-medium border outline-none transition ${
+                        isLight
+                          ? "bg-slate-100 border-slate-300 text-slate-900 focus:border-red-500"
+                          : "bg-black/40 border-white/15 text-white focus:border-[oklch(0.65_0.24_25)]"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1">
                   <button
                     type="button"
-                    onClick={() => setPasscodeInput("9629")}
+                    onClick={() => {
+                      setUsernameInput("admin");
+                      setPasswordInput("9629");
+                    }}
                     className="text-[oklch(0.75_0.22_25)] hover:underline font-semibold cursor-pointer"
                   >
-                    Default Code: 9629
+                    Use Default Master Code (9629)
                   </button>
                   <span className={`text-[11px] ${isLight ? "text-slate-400" : "text-white/40"}`}>
-                    Hint: Creator Phone Prefix
+                    Protected Database Access
                   </span>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 px-6 rounded-xl bg-[oklch(0.65_0.24_25)] hover:bg-[oklch(0.7_0.24_25)] text-white font-extrabold text-sm shadow-lg shadow-red-500/20 transition cursor-pointer"
+                  disabled={isLoggingIn}
+                  className="w-full py-3.5 px-6 rounded-xl bg-[oklch(0.65_0.24_25)] hover:bg-[oklch(0.7_0.24_25)] text-white font-extrabold text-sm shadow-lg shadow-red-500/20 transition cursor-pointer disabled:opacity-50 mt-2"
                 >
-                  Unlock Dashboard
+                  {isLoggingIn ? "Authenticating with Database..." : "Sign In to Admin Dashboard"}
                 </button>
               </form>
             </div>
           ) : (
-            /* Unlocked Admin Dashboard */
+            /* Authenticated Admin Dashboard */
             <div>
               {/* Tabs Navigation */}
               <div
@@ -328,62 +600,474 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
               >
                 <button
                   type="button"
-                  onClick={() => setActiveTab("toggle")}
-                  className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
-                    activeTab === "toggle"
+                  onClick={() => setActiveTab("support")}
+                  className={`flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+                    activeTab === "support"
                       ? "border-[oklch(0.65_0.24_25)] text-[oklch(0.75_0.22_25)]"
                       : "border-transparent text-white/60 hover:text-white"
                   }`}
                 >
-                  <Power className="w-3.5 h-3.5" />
-                  <span>Button Toggle</span>
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>Support Details & Goal</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("realtime")}
+                  className={`flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+                    activeTab === "realtime"
+                      ? "border-[oklch(0.65_0.24_25)] text-[oklch(0.75_0.22_25)]"
+                      : "border-transparent text-white/60 hover:text-white"
+                  }`}
+                >
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span>Real-time Payments ({payments.length})</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setActiveTab("links")}
-                  className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
                     activeTab === "links"
                       ? "border-[oklch(0.65_0.24_25)] text-[oklch(0.75_0.22_25)]"
                       : "border-transparent text-white/60 hover:text-white"
                   }`}
                 >
                   <LinkIcon className="w-3.5 h-3.5" />
-                  <span>Link Editors</span>
+                  <span>Social Links</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setActiveTab("amounts")}
-                  className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
-                    activeTab === "amounts"
+                  onClick={() => setActiveTab("accounts")}
+                  className={`flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+                    activeTab === "accounts"
                       ? "border-[oklch(0.65_0.24_25)] text-[oklch(0.75_0.22_25)]"
                       : "border-transparent text-white/60 hover:text-white"
                   }`}
                 >
-                  <IndianRupee className="w-3.5 h-3.5" />
-                  <span>Amount & Details</span>
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Admin Accounts ({adminAccounts.length})</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setActiveTab("security")}
-                  className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
                     activeTab === "security"
                       ? "border-[oklch(0.65_0.24_25)] text-[oklch(0.75_0.22_25)]"
                       : "border-transparent text-white/60 hover:text-white"
                   }`}
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Secret Code</span>
+                  <span>Security & Passcode</span>
                 </button>
               </div>
 
               {/* Tab Contents */}
-              <div className="p-6 max-h-[60vh] overflow-y-auto space-y-6">
-                {/* TAB 1: BUTTON TOGGLE (SUPPORT) */}
-                {activeTab === "toggle" && (
+              <div className="p-5 sm:p-6 max-h-[62vh] overflow-y-auto space-y-6">
+                {/* TAB 0: SUPPORT DETAILS & GOAL (ADMIN FULL EDIT) */}
+                {activeTab === "support" && (
                   <div className="space-y-6">
+                    {/* 1. MONTHLY GOAL & RESET COLLECTED PAYMENTS */}
+                    <div
+                      className={`p-5 rounded-2xl border space-y-4 ${
+                        isLight
+                          ? "bg-slate-50 border-slate-200"
+                          : "bg-white/5 border-white/10 shadow-lg"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <IndianRupee className="w-5 h-5 text-[oklch(0.75_0.22_25)]" />
+                          <h4 className="font-extrabold text-sm sm:text-base">
+                            Monthly Goal & Payment Reset
+                          </h4>
+                        </div>
+
+                        {/* Reset Goal Payments Button */}
+                        <button
+                          type="button"
+                          onClick={() => setShowResetConfirm(true)}
+                          disabled={isResettingGoal || totalRaised === 0}
+                          className="px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-300 font-bold text-xs transition cursor-pointer flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                        >
+                          <RotateCcw
+                            className={`w-3.5 h-3.5 ${isResettingGoal ? "animate-spin" : ""}`}
+                          />
+                          <span>Reset Payment in Goal (₹0)</span>
+                        </button>
+                      </div>
+
+                      {/* Goal Live Progress Banner */}
+                      <div className="p-3.5 rounded-xl bg-black/25 border border-white/5 space-y-2">
+                        <div className="flex flex-wrap items-center justify-between text-xs gap-2">
+                          <span className="font-semibold text-white/70">Current Goal Raised:</span>
+                          <span className="font-black text-emerald-400">
+                            ₹{totalRaised.toLocaleString("en-IN")} / ₹
+                            {config.monthlyGoal.toLocaleString("en-IN")} (
+                            {config.monthlyGoal > 0
+                              ? Math.round((totalRaised / config.monthlyGoal) * 100)
+                              : 0}
+                            %)
+                          </span>
+                        </div>
+                        <div className="w-full h-2.5 rounded-full bg-black/40 overflow-hidden border border-white/5 p-0.5">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-[oklch(0.65_0.24_25)] to-orange-500 transition-all duration-500"
+                            style={{
+                              width: `${Math.min(100, Math.max(0, config.monthlyGoal > 0 ? (totalRaised / config.monthlyGoal) * 100 : 0))}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-white/40">
+                          <span>{payments.length} verified transactions recorded</span>
+                          <span>
+                            Click &apos;Reset Payment in Goal&apos; to clear payments back to ₹0
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Goal Inputs */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                            Monthly Goal Target (₹):
+                          </label>
+                          <input
+                            type="number"
+                            value={config.monthlyGoal}
+                            onChange={(e) =>
+                              setConfig((prev) => ({
+                                ...prev,
+                                monthlyGoal: Math.max(100, parseInt(e.target.value, 10) || 15000),
+                              }))
+                            }
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none font-bold ${
+                              isLight
+                                ? "bg-white border-slate-200 text-slate-900"
+                                : "bg-black/30 border-white/10 text-white"
+                            }`}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                            Monthly Goal Heading / Title:
+                          </label>
+                          <input
+                            type="text"
+                            value={config.goalTitle || ""}
+                            onChange={(e) =>
+                              setConfig((prev) => ({
+                                ...prev,
+                                goalTitle: e.target.value,
+                              }))
+                            }
+                            placeholder="e.g. Monthly SMP Server & Stream Fund"
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none ${
+                              isLight
+                                ? "bg-white border-slate-200 text-slate-900"
+                                : "bg-black/30 border-white/10 text-white"
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. SUPPORT PAGE BRANDING & DETAILS */}
+                    <div
+                      className={`p-5 rounded-2xl border space-y-4 ${
+                        isLight
+                          ? "bg-slate-50 border-slate-200"
+                          : "bg-white/5 border-white/10 shadow-lg"
+                      }`}
+                    >
+                      <h4 className="font-extrabold text-sm sm:text-base">
+                        Support Page Branding & Content
+                      </h4>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                            Support Page Headline:
+                          </label>
+                          <input
+                            type="text"
+                            value={config.supportTitle}
+                            onChange={(e) =>
+                              setConfig((prev) => ({ ...prev, supportTitle: e.target.value }))
+                            }
+                            placeholder="Support SodaCraft Tamil Gaming"
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none ${
+                              isLight
+                                ? "bg-white border-slate-200 text-slate-900"
+                                : "bg-black/30 border-white/10 text-white"
+                            }`}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                            Payee / Channel Display Name:
+                          </label>
+                          <input
+                            type="text"
+                            value={config.payeeName}
+                            onChange={(e) =>
+                              setConfig((prev) => ({ ...prev, payeeName: e.target.value }))
+                            }
+                            placeholder="SodaCraft Tamil"
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none ${
+                              isLight
+                                ? "bg-white border-slate-200 text-slate-900"
+                                : "bg-black/30 border-white/10 text-white"
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                          Support Subtitle / Community Bio:
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={config.supportSubtitle}
+                          onChange={(e) =>
+                            setConfig((prev) => ({ ...prev, supportSubtitle: e.target.value }))
+                          }
+                          placeholder="Fuel next-level Minecraft Tamil adventures, SMP episodes & high-FPS live streams..."
+                          className={`w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none resize-none ${
+                            isLight
+                              ? "bg-white border-slate-200 text-slate-900"
+                              : "bg-black/30 border-white/10 text-white"
+                          }`}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                          Payment Note / Purpose:
+                        </label>
+                        <input
+                          type="text"
+                          value={config.paymentNote}
+                          onChange={(e) =>
+                            setConfig((prev) => ({ ...prev, paymentNote: e.target.value }))
+                          }
+                          placeholder="Support SodaCraft Tamil Gaming"
+                          className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none ${
+                            isLight
+                              ? "bg-white border-slate-200 text-slate-900"
+                              : "bg-black/30 border-white/10 text-white"
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 3. RAZORPAY LIVE GATEWAY CREDENTIALS */}
+                    <div
+                      className={`p-5 rounded-2xl border space-y-4 ${
+                        isLight
+                          ? "bg-slate-50 border-slate-200"
+                          : "bg-white/5 border-white/10 shadow-lg"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h4 className="font-extrabold text-sm sm:text-base flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span>Razorpay Live Payment Gateway</span>
+                        </h4>
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-wider">
+                          Live Production Active
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                            Razorpay Key ID:
+                          </label>
+                          <input
+                            type="text"
+                            value={config.razorpayKeyId || ""}
+                            onChange={(e) =>
+                              setConfig((prev) => ({
+                                ...prev,
+                                razorpayKeyId: e.target.value.trim(),
+                              }))
+                            }
+                            placeholder="rzp_live_..."
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-mono border outline-none ${
+                              isLight
+                                ? "bg-white border-slate-200 text-slate-900"
+                                : "bg-black/30 border-white/10 text-emerald-400"
+                            }`}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                              Razorpay Key Secret:
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setShowSecretKey(!showSecretKey)}
+                              className="text-[11px] text-white/50 hover:text-white flex items-center gap-1 cursor-pointer"
+                            >
+                              {showSecretKey ? (
+                                <>
+                                  <EyeOff className="w-3 h-3" /> Hide
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="w-3 h-3" /> Show
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          <input
+                            type={showSecretKey ? "text" : "password"}
+                            value={config.razorpayKeySecret || ""}
+                            onChange={(e) =>
+                              setConfig((prev) => ({
+                                ...prev,
+                                razorpayKeySecret: e.target.value.trim(),
+                              }))
+                            }
+                            placeholder="42rJlLTF..."
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-mono border outline-none ${
+                              isLight
+                                ? "bg-white border-slate-200 text-slate-900"
+                                : "bg-black/30 border-white/10 text-emerald-400"
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      <span className="text-[10px] text-white/50 block">
+                        Direct API integration: Orders are created server-side with this secret,
+                        ensuring full payment verification and instant WhatsApp receipt dispatch.
+                      </span>
+                    </div>
+
+                    {/* 4. WHATSAPP RECEIPT & UPI */}
+                    <div
+                      className={`p-5 rounded-2xl border space-y-4 ${
+                        isLight
+                          ? "bg-slate-50 border-slate-200"
+                          : "bg-white/5 border-white/10 shadow-lg"
+                      }`}
+                    >
+                      <h4 className="font-extrabold text-sm sm:text-base">
+                        WhatsApp Receipt Delivery & UPI
+                      </h4>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                            Creator WhatsApp Number:
+                          </label>
+                          <input
+                            type="text"
+                            value={config.whatsappNumber}
+                            onChange={(e) =>
+                              setConfig((prev) => ({
+                                ...prev,
+                                whatsappNumber: e.target.value.trim(),
+                              }))
+                            }
+                            placeholder="919629123982"
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none font-mono ${
+                              isLight
+                                ? "bg-white border-slate-200 text-slate-900"
+                                : "bg-black/30 border-white/10 text-white"
+                            }`}
+                          />
+                          <span className="text-[10px] text-white/50 block">
+                            Receipts and transaction messages are automatically sent to this
+                            WhatsApp number.
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                            Creator UPI ID (VPA):
+                          </label>
+                          <input
+                            type="text"
+                            value={config.upiId}
+                            onChange={(e) =>
+                              setConfig((prev) => ({
+                                ...prev,
+                                upiId: e.target.value.trim(),
+                              }))
+                            }
+                            placeholder="santhoshkumarshasc@oksbi"
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none font-mono ${
+                              isLight
+                                ? "bg-white border-slate-200 text-slate-900"
+                                : "bg-black/30 border-white/10 text-white"
+                            }`}
+                          />
+                          <span className="text-[10px] text-white/50 block">
+                            Displayed on the official receipt as the registered creator VPA.
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 5. PRESET DONATION AMOUNTS */}
+                    <div
+                      className={`p-5 rounded-2xl border space-y-3.5 ${
+                        isLight
+                          ? "bg-slate-50 border-slate-200"
+                          : "bg-white/5 border-white/10 shadow-lg"
+                      }`}
+                    >
+                      <label className="text-xs font-bold uppercase tracking-wider opacity-80 block">
+                        Preset Support Amounts (₹):
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {config.presetAmounts.map((amt) => (
+                          <div
+                            key={amt}
+                            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 border border-white/10 text-xs font-bold"
+                          >
+                            <span>₹{amt}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePreset(amt)}
+                              className="text-white/40 hover:text-rose-400 transition cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="number"
+                          value={newPresetAmount}
+                          onChange={(e) => setNewPresetAmount(e.target.value)}
+                          placeholder="Add ₹ (e.g. 750)"
+                          className="px-3.5 py-2 rounded-xl text-xs bg-black/20 border border-white/10 outline-none w-36"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddPreset}
+                          className="py-2 px-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Preset</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 6. SUPPORT BUTTON HEADER VISIBILITY & LABEL */}
                     <div
                       className={`p-5 rounded-2xl border flex items-center justify-between gap-4 ${
                         config.supportButtonEnabled
@@ -410,7 +1094,6 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                         </div>
                         <p className={`text-xs ${isLight ? "text-slate-500" : "text-white/60"}`}>
                           When enabled, visitors see the Support button in the navbar and header.
-                          When toggled off, the Support button is hidden.
                         </p>
                       </div>
 
@@ -429,10 +1112,9 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                       </button>
                     </div>
 
-                    {/* Support Button Custom Label */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider opacity-80">
-                        Support Button Text:
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold uppercase tracking-wider opacity-80 block">
+                        Support Button Label Text:
                       </label>
                       <input
                         type="text"
@@ -441,536 +1123,450 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           setConfig((prev) => ({ ...prev, supportButtonLabel: e.target.value }))
                         }
                         placeholder="e.g. Support"
-                        className={`w-full px-4 py-2.5 rounded-xl text-sm border outline-none ${
+                        className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none ${
                           isLight
-                            ? "bg-slate-50 border-slate-200 text-slate-900"
+                            ? "bg-white border-slate-200 text-slate-900"
                             : "bg-black/30 border-white/10 text-white"
                         }`}
                       />
                     </div>
+                  </div>
+                )}
 
-                    {/* Live Preview of Button */}
-                    <div
-                      className={`p-4 rounded-2xl border space-y-3 ${
-                        isLight ? "bg-slate-50 border-slate-200" : "bg-white/5 border-white/10"
-                      }`}
-                    >
-                      <span className="text-xs font-bold opacity-70 block">
-                        Live Navbar Preview:
-                      </span>
-                      <div className="flex items-center gap-3">
-                        {config.supportButtonEnabled ? (
-                          <div className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold border bg-[oklch(0.65_0.24_25)]/15 border-[oklch(0.65_0.24_25)]/30 text-[oklch(0.75_0.22_25)] shadow-sm">
-                            <Heart className="h-4 w-4 fill-current text-[oklch(0.65_0.24_25)]" />
-                            <span>{config.supportButtonLabel || "Support"}</span>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-rose-400 italic bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20">
-                            Support button is currently hidden from public visitors.
-                          </div>
-                        )}
+                {/* TAB 1: REAL-TIME PAYMENTS & RECEIPTS */}
+                {activeTab === "realtime" && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                        <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                          Total Verified Raised
+                        </span>
+                        <div className="text-2xl font-black text-emerald-400 mt-1">
+                          ₹{totalRaised.toLocaleString("en-IN")}
+                        </div>
+                        <span className="text-[10px] text-white/50">via Razorpay Gateway</span>
                       </div>
+
+                      <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+                        <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider">
+                          Total Supporters
+                        </span>
+                        <div className="text-2xl font-black text-blue-400 mt-1">
+                          {payments.length}
+                        </div>
+                        <span className="text-[10px] text-white/50">
+                          Official Receipts Generated
+                        </span>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20">
+                        <span className="text-[11px] font-bold text-purple-400 uppercase tracking-wider">
+                          Real-time Sync
+                        </span>
+                        <div className="text-sm font-black text-purple-300 mt-1 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          Auto-refreshing (4s)
+                        </div>
+                        <span className="text-[10px] text-white/50">
+                          Direct WhatsApp Dispatch Active
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-bold uppercase tracking-wider opacity-80">
+                            Live Razorpay Transactions & Receipts:
+                          </h4>
+                          <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Razorpay Only
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => fetchRealtimeData()}
+                            disabled={isRefreshing}
+                            className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/70 hover:text-white text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                          >
+                            <RefreshCw
+                              className={`w-3 h-3 ${isRefreshing ? "animate-spin" : ""}`}
+                            />
+                            <span>Refresh</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowResetConfirm(true)}
+                            disabled={isResettingGoal || payments.length === 0}
+                            className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-300 font-bold text-xs transition cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <RotateCcw
+                              className={`w-3.5 h-3.5 ${isResettingGoal ? "animate-spin" : ""}`}
+                            />
+                            <span>Reset Goal to ₹0</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {payments.length === 0 ? (
+                        <div className="p-8 text-center rounded-2xl border border-dashed border-white/10 text-white/50 text-sm">
+                          No payments recorded yet. Make a test payment on the Support page to see
+                          it appear here in real-time!
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {payments.map((p) => (
+                            <div
+                              key={p.id}
+                              className={`p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                                isLight
+                                  ? "bg-slate-50 border-slate-200"
+                                  : "bg-white/5 border-white/10 hover:border-white/20 transition"
+                              }`}
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-extrabold text-sm">{p.name}</span>
+                                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold">
+                                    {p.receiptNumber || "SCT-RZP"}
+                                  </span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 uppercase font-bold">
+                                    Razorpay
+                                  </span>
+                                </div>
+                                <p className="text-xs text-white/70 italic">
+                                  &ldquo;{p.message}&rdquo;
+                                </p>
+                                <div className="text-[10px] text-white/40 flex items-center gap-2">
+                                  <span>ID: {p.paymentId || "pay_rzp"}</span>
+                                  <span>•</span>
+                                  <span>{new Date(p.timestamp).toLocaleString()}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                                <div className="text-right">
+                                  <div className="text-base font-black text-emerald-400">
+                                    ₹{p.amount}
+                                  </div>
+                                  <span className="text-[10px] text-emerald-400/80 font-semibold">
+                                    ✓ Verified
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDeletePayment(p.paymentId || p.id, p.name, p.amount)
+                                  }
+                                  className="p-2 rounded-xl text-white/40 hover:text-rose-400 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/20 transition cursor-pointer"
+                                  title="Delete transaction entry"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* TAB 2: LINK EDITORS */}
-                {activeTab === "links" && (
+                {/* TAB 2: ADMIN ACCOUNTS (DATABASE) */}
+                {activeTab === "accounts" && (
                   <div className="space-y-6">
-                    {/* Primary Channel & Live URLs */}
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-extrabold uppercase tracking-wider text-[oklch(0.75_0.22_25)]">
-                        Core URLs
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider opacity-80 mb-3">
+                        Registered Database Admin Accounts:
                       </h4>
-
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-xs font-semibold opacity-75 block mb-1">
-                            YouTube Subscribe URL:
-                          </label>
-                          <input
-                            type="text"
-                            value={config.subscribeUrl}
-                            onChange={(e) =>
-                              setConfig((prev) => ({ ...prev, subscribeUrl: e.target.value }))
-                            }
-                            className={`w-full px-3.5 py-2 rounded-xl text-xs font-mono border outline-none ${
-                              isLight
-                                ? "bg-slate-50 border-slate-200 text-slate-900"
-                                : "bg-black/30 border-white/10 text-white"
-                            }`}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold opacity-75 block mb-1">
-                            Latest Videos Playlist / Channel URL:
-                          </label>
-                          <input
-                            type="text"
-                            value={config.latestVideosUrl}
-                            onChange={(e) =>
-                              setConfig((prev) => ({ ...prev, latestVideosUrl: e.target.value }))
-                            }
-                            className={`w-full px-3.5 py-2 rounded-xl text-xs font-mono border outline-none ${
-                              isLight
-                                ? "bg-slate-50 border-slate-200 text-slate-900"
-                                : "bg-black/30 border-white/10 text-white"
-                            }`}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold opacity-75 block mb-1">
-                            Live Stream Override URL (optional):
-                          </label>
-                          <input
-                            type="text"
-                            value={config.liveStreamUrl}
-                            onChange={(e) =>
-                              setConfig((prev) => ({ ...prev, liveStreamUrl: e.target.value }))
-                            }
-                            placeholder="e.g. https://www.youtube.com/watch?v=YOUR_LIVE_ID"
-                            className={`w-full px-3.5 py-2 rounded-xl text-xs font-mono border outline-none ${
-                              isLight
-                                ? "bg-slate-50 border-slate-200 text-slate-900"
-                                : "bg-black/30 border-white/10 text-white"
-                            }`}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Social & Channel Links List */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-extrabold uppercase tracking-wider text-[oklch(0.75_0.22_25)]">
-                          Social & Community Links
-                        </h4>
-                        <span className="text-[11px] opacity-60">
-                          {config.socialLinks.filter((l) => l.enabled).length} Active Links
-                        </span>
-                      </div>
-
                       <div className="space-y-2">
-                        {config.socialLinks.map((item) => (
+                        {adminAccounts.map((acc) => (
                           <div
-                            key={item.id}
-                            className={`p-3 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center gap-2.5 justify-between ${
-                              item.enabled
-                                ? isLight
-                                  ? "bg-slate-50 border-slate-200"
-                                  : "bg-white/5 border-white/10"
-                                : "opacity-50 bg-black/20 border-white/5"
+                            key={acc.id}
+                            className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+                              isLight
+                                ? "bg-slate-50 border-slate-200"
+                                : "bg-white/5 border-white/10"
                             }`}
                           >
-                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleUpdateSocialLink(item.id, { enabled: !item.enabled })
-                                }
-                                className={`p-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                                  item.enabled
-                                    ? "bg-emerald-500/20 text-emerald-400"
-                                    : "bg-zinc-600/20 text-zinc-400"
-                                }`}
-                                title={item.enabled ? "Disable link" : "Enable link"}
-                              >
-                                {item.enabled ? (
-                                  <Eye className="w-3.5 h-3.5" />
-                                ) : (
-                                  <EyeOff className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-
-                              <div className="flex-1 min-w-0">
-                                <input
-                                  type="text"
-                                  value={item.label}
-                                  onChange={(e) =>
-                                    handleUpdateSocialLink(item.id, { label: e.target.value })
-                                  }
-                                  className="text-xs font-bold bg-transparent outline-none border-b border-transparent focus:border-[oklch(0.65_0.24_25)] w-36"
-                                />
-                                <input
-                                  type="text"
-                                  value={item.href}
-                                  onChange={(e) =>
-                                    handleUpdateSocialLink(item.id, { href: e.target.value })
-                                  }
-                                  placeholder="https://..."
-                                  className="text-[11px] font-mono opacity-70 bg-transparent outline-none border-b border-transparent focus:border-[oklch(0.65_0.24_25)] w-full block truncate"
-                                />
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-extrabold text-sm">{acc.username}</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 uppercase font-bold">
+                                  {acc.role}
+                                </span>
                               </div>
+                              <p className="text-xs text-white/60">{acc.email || "No email"}</p>
+                              <span className="text-[10px] text-white/40">
+                                Created: {new Date(acc.createdAt).toLocaleDateString()}
+                              </span>
                             </div>
 
-                            <div className="flex items-center gap-2 self-end sm:self-center">
-                              {item.href && (
-                                <a
-                                  href={item.href}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="p-1 text-white/40 hover:text-white"
-                                  title="Test link"
-                                >
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                </a>
-                              )}
+                            {adminAccounts.length > 1 && (
                               <button
                                 type="button"
-                                onClick={() => handleRemoveSocialLink(item.id)}
-                                className="p-1 text-rose-400/60 hover:text-rose-400 cursor-pointer"
-                                title="Delete link"
+                                onClick={() => handleDeleteAccount(acc.id, acc.username)}
+                                className="p-2 rounded-lg text-rose-400 hover:bg-rose-500/15 transition cursor-pointer"
+                                title="Delete Admin"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
-                            </div>
+                            )}
                           </div>
                         ))}
                       </div>
+                    </div>
 
-                      {/* Add New Link Card */}
-                      <div
-                        className={`p-3.5 rounded-2xl border border-dashed space-y-2.5 ${
-                          isLight ? "border-slate-300 bg-slate-50" : "border-white/20 bg-black/20"
-                        }`}
-                      >
-                        <span className="text-xs font-bold flex items-center gap-1 text-[oklch(0.75_0.22_25)]">
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add New Link:</span>
-                        </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            value={newLinkLabel}
-                            onChange={(e) => setNewLinkLabel(e.target.value)}
-                            placeholder="Label (e.g. Telegram)"
-                            className={`px-3 py-1.5 rounded-lg text-xs border outline-none ${
-                              isLight
-                                ? "bg-white border-slate-200 text-slate-800"
-                                : "bg-black/40 border-white/10 text-white"
-                            }`}
-                          />
-                          <input
-                            type="text"
-                            value={newLinkHref}
-                            onChange={(e) => setNewLinkHref(e.target.value)}
-                            placeholder="URL (https://...)"
-                            className={`px-3 py-1.5 rounded-lg text-xs font-mono border outline-none ${
-                              isLight
-                                ? "bg-white border-slate-200 text-slate-800"
-                                : "bg-black/40 border-white/10 text-white"
-                            }`}
-                          />
+                    {/* Add New Admin Account Form */}
+                    <div
+                      className={`p-4 rounded-2xl border ${isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10"}`}
+                    >
+                      <h5 className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <UserPlus className="w-4 h-4 text-emerald-400" />
+                        <span>Add New Admin Account to Database</span>
+                      </h5>
+                      <form onSubmit={handleCreateAccount} className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[11px] font-bold opacity-75 block mb-1">
+                              Username *
+                            </label>
+                            <input
+                              type="text"
+                              value={newAccUser}
+                              onChange={(e) => setNewAccUser(e.target.value)}
+                              placeholder="e.g. mod_santhosh"
+                              required
+                              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none ${
+                                isLight
+                                  ? "bg-white border-slate-200"
+                                  : "bg-black/30 border-white/10 text-white"
+                              }`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold opacity-75 block mb-1">
+                              Email
+                            </label>
+                            <input
+                              type="email"
+                              value={newAccEmail}
+                              onChange={(e) => setNewAccEmail(e.target.value)}
+                              placeholder="e.g. admin@sodacraft.com"
+                              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none ${
+                                isLight
+                                  ? "bg-white border-slate-200"
+                                  : "bg-black/30 border-white/10 text-white"
+                              }`}
+                            />
+                          </div>
                         </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[11px] font-bold opacity-75 block mb-1">
+                              Password *
+                            </label>
+                            <input
+                              type="password"
+                              value={newAccPass}
+                              onChange={(e) => setNewAccPass(e.target.value)}
+                              placeholder="Strong admin password"
+                              required
+                              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none ${
+                                isLight
+                                  ? "bg-white border-slate-200"
+                                  : "bg-black/30 border-white/10 text-white"
+                              }`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold opacity-75 block mb-1">
+                              Role
+                            </label>
+                            <select
+                              value={newAccRole}
+                              onChange={(e) =>
+                                setNewAccRole(e.target.value as "admin" | "superadmin")
+                              }
+                              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none ${
+                                isLight
+                                  ? "bg-white border-slate-200"
+                                  : "bg-black/30 border-white/10 text-white"
+                              }`}
+                            >
+                              <option value="admin">Admin</option>
+                              <option value="superadmin">Super Admin</option>
+                            </select>
+                          </div>
+                        </div>
+
                         <button
-                          type="button"
-                          onClick={handleAddSocialLink}
-                          className="w-full py-1.5 rounded-lg bg-[oklch(0.65_0.24_25)] hover:bg-[oklch(0.7_0.24_25)] text-white text-xs font-bold transition cursor-pointer"
+                          type="submit"
+                          className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
                         >
-                          Add Link
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Create Admin Account in Database</span>
                         </button>
-                      </div>
+                      </form>
                     </div>
                   </div>
                 )}
 
-                {/* TAB 3: AMOUNT & DETAILS */}
-                {activeTab === "amounts" && (
+                {/* TAB 4: SOCIAL LINKS */}
+                {activeTab === "links" && (
                   <div className="space-y-6">
-                    {/* Preset Payment Amounts */}
                     <div className="space-y-3">
-                      <label className="text-xs font-extrabold uppercase tracking-wider text-[oklch(0.75_0.22_25)] block">
-                        Support Preset Amounts (₹):
+                      <label className="text-xs font-bold uppercase tracking-wider opacity-80">
+                        Manage Header & Footer Links:
                       </label>
-                      <div className="flex flex-wrap gap-2">
-                        {config.presetAmounts.map((amount) => (
+                      <div className="space-y-2.5">
+                        {config.socialLinks.map((link) => (
                           <div
-                            key={amount}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold ${
+                            key={link.id}
+                            className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
                               isLight
-                                ? "bg-slate-100 border-slate-200 text-slate-800"
-                                : "bg-white/10 border-white/15 text-white"
+                                ? "bg-slate-50 border-slate-200"
+                                : "bg-black/20 border-white/10"
                             }`}
                           >
-                            <span>₹{amount}</span>
+                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <input
+                                type="text"
+                                value={link.label}
+                                onChange={(e) =>
+                                  handleUpdateSocialLink(link.id, { label: e.target.value })
+                                }
+                                placeholder="Link Label"
+                                className="px-3 py-1.5 rounded-lg text-xs bg-transparent border border-white/10 outline-none"
+                              />
+                              <input
+                                type="url"
+                                value={link.href}
+                                onChange={(e) =>
+                                  handleUpdateSocialLink(link.id, { href: e.target.value })
+                                }
+                                placeholder="URL (https://...)"
+                                className="px-3 py-1.5 rounded-lg text-xs bg-transparent border border-white/10 outline-none text-emerald-400 font-mono"
+                              />
+                            </div>
                             <button
                               type="button"
-                              onClick={() => handleRemovePreset(amount)}
-                              className="text-rose-400 hover:text-rose-300 p-0.5 cursor-pointer"
-                              title="Remove"
+                              onClick={() => handleRemoveSocialLink(link.id)}
+                              className="p-2 rounded-lg text-rose-400 hover:bg-rose-500/10 cursor-pointer"
                             >
-                              <X className="w-3 h-3" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ))}
                       </div>
-
-                      {/* Add new preset amount */}
-                      <div className="flex gap-2 max-w-xs">
-                        <input
-                          type="number"
-                          value={newPresetAmount}
-                          onChange={(e) => setNewPresetAmount(e.target.value)}
-                          placeholder="e.g. 2000"
-                          className={`flex-1 px-3 py-1.5 rounded-lg text-xs border outline-none ${
-                            isLight
-                              ? "bg-slate-50 border-slate-200 text-slate-800"
-                              : "bg-black/30 border-white/10 text-white"
-                          }`}
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddPreset}
-                          className="px-3.5 py-1.5 rounded-lg bg-[oklch(0.65_0.24_25)] hover:bg-[oklch(0.7_0.24_25)] text-white text-xs font-bold cursor-pointer"
-                        >
-                          Add
-                        </button>
-                      </div>
                     </div>
 
-                    {/* Monthly Goal Amount */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase tracking-wider opacity-80 block">
-                        Monthly Support Goal (₹):
-                      </label>
-                      <div className="relative max-w-sm">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold opacity-60">
-                          ₹
-                        </span>
-                        <input
-                          type="number"
-                          value={config.monthlyGoal}
-                          onChange={(e) =>
-                            setConfig((prev) => ({
-                              ...prev,
-                              monthlyGoal: parseInt(e.target.value, 10) || 1000,
-                            }))
-                          }
-                          className={`w-full pl-8 pr-4 py-2 rounded-xl text-sm font-bold border outline-none ${
-                            isLight
-                              ? "bg-slate-50 border-slate-200 text-slate-900"
-                              : "bg-black/30 border-white/10 text-white"
-                          }`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* UPI & Payee Details */}
-                    <div className="space-y-4 pt-2 border-t border-white/10">
-                      <h4 className="text-xs font-extrabold uppercase tracking-wider text-[oklch(0.75_0.22_25)]">
-                        Payee & UPI Configuration
-                      </h4>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs font-semibold opacity-75 block mb-1">
-                            Creator UPI ID:
-                          </label>
-                          <input
-                            type="text"
-                            value={config.upiId}
-                            onChange={(e) =>
-                              setConfig((prev) => ({ ...prev, upiId: e.target.value }))
-                            }
-                            className={`w-full px-3 py-2 rounded-xl text-xs font-mono border outline-none ${
-                              isLight
-                                ? "bg-slate-50 border-slate-200 text-slate-900"
-                                : "bg-black/30 border-white/10 text-white"
-                            }`}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold opacity-75 block mb-1">
-                            Payee Name:
-                          </label>
-                          <input
-                            type="text"
-                            value={config.payeeName}
-                            onChange={(e) =>
-                              setConfig((prev) => ({ ...prev, payeeName: e.target.value }))
-                            }
-                            className={`w-full px-3 py-2 rounded-xl text-xs border outline-none ${
-                              isLight
-                                ? "bg-slate-50 border-slate-200 text-slate-900"
-                                : "bg-black/30 border-white/10 text-white"
-                            }`}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold opacity-75 block mb-1">
-                            WhatsApp Number (Direct Dispatch):
-                          </label>
-                          <input
-                            type="text"
-                            value={config.whatsappNumber}
-                            onChange={(e) =>
-                              setConfig((prev) => ({ ...prev, whatsappNumber: e.target.value }))
-                            }
-                            placeholder="e.g. 919629123982"
-                            className={`w-full px-3 py-2 rounded-xl text-xs font-mono border outline-none ${
-                              isLight
-                                ? "bg-slate-50 border-slate-200 text-slate-900"
-                                : "bg-black/30 border-white/10 text-white"
-                            }`}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold opacity-75 block mb-1">
-                            Payment Transaction Note:
-                          </label>
-                          <input
-                            type="text"
-                            value={config.paymentNote}
-                            onChange={(e) =>
-                              setConfig((prev) => ({ ...prev, paymentNote: e.target.value }))
-                            }
-                            className={`w-full px-3 py-2 rounded-xl text-xs border outline-none ${
-                              isLight
-                                ? "bg-slate-50 border-slate-200 text-slate-900"
-                                : "bg-black/30 border-white/10 text-white"
-                            }`}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Support Page Titles */}
-                    <div className="space-y-3 pt-2 border-t border-white/10">
-                      <h4 className="text-xs font-extrabold uppercase tracking-wider text-[oklch(0.75_0.22_25)]">
-                        Support Page Branding
-                      </h4>
-
-                      <div>
-                        <label className="text-xs font-semibold opacity-75 block mb-1">
-                          Support Page Title:
-                        </label>
+                    {/* Add New Link */}
+                    <div className="p-3.5 rounded-xl border border-dashed border-white/15 space-y-3">
+                      <span className="text-xs font-bold uppercase tracking-wider opacity-75">
+                        Add New Link:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input
                           type="text"
-                          value={config.supportTitle}
-                          onChange={(e) =>
-                            setConfig((prev) => ({ ...prev, supportTitle: e.target.value }))
-                          }
-                          className={`w-full px-3 py-2 rounded-xl text-xs border outline-none ${
-                            isLight
-                              ? "bg-slate-50 border-slate-200 text-slate-900"
-                              : "bg-black/30 border-white/10 text-white"
-                          }`}
+                          value={newLinkLabel}
+                          onChange={(e) => setNewLinkLabel(e.target.value)}
+                          placeholder="e.g. Discord Community"
+                          className="px-3 py-2 rounded-lg text-xs bg-black/20 border border-white/10 outline-none"
+                        />
+                        <input
+                          type="url"
+                          value={newLinkHref}
+                          onChange={(e) => setNewLinkHref(e.target.value)}
+                          placeholder="https://discord.gg/..."
+                          className="px-3 py-2 rounded-lg text-xs bg-black/20 border border-white/10 outline-none"
                         />
                       </div>
-
-                      <div>
-                        <label className="text-xs font-semibold opacity-75 block mb-1">
-                          Support Subtitle:
-                        </label>
-                        <textarea
-                          value={config.supportSubtitle}
-                          onChange={(e) =>
-                            setConfig((prev) => ({ ...prev, supportSubtitle: e.target.value }))
-                          }
-                          rows={2}
-                          className={`w-full px-3 py-2 rounded-xl text-xs border outline-none ${
-                            isLight
-                              ? "bg-slate-50 border-slate-200 text-slate-900"
-                              : "bg-black/30 border-white/10 text-white"
-                          }`}
-                        />
-                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddSocialLink}
+                        className="py-1.5 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Link</span>
+                      </button>
                     </div>
                   </div>
                 )}
 
-                {/* TAB 4: SECURITY & SECRET CODE */}
+                {/* TAB 5: SECURITY & PASSCODE */}
                 {activeTab === "security" && (
                   <div className="space-y-6">
-                    <div
-                      className={`p-4 rounded-2xl border space-y-2 ${
-                        isLight
-                          ? "bg-amber-50 border-amber-200"
-                          : "bg-amber-500/10 border-amber-500/30"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
-                        <KeyRound className="w-4 h-4" />
-                        <span>Admin Secret Passcode</span>
-                      </div>
-                      <p className={`text-xs ${isLight ? "text-slate-600" : "text-white/70"}`}>
-                        This secret code locks and unlocks this dashboard. You can change it anytime
-                        here. The current active code is:{" "}
-                        <strong className="font-mono text-amber-400 font-bold">
-                          {config.secretCode}
-                        </strong>
+                    <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 space-y-2">
+                      <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Master Access Token & URL</span>
+                      </h4>
+                      <p className="text-xs text-white/70">
+                        Remember: The dashboard is hidden from all public pages. You can only open
+                        it by appending:
                       </p>
+                      <div className="p-2.5 rounded-xl bg-black/40 border border-white/10 font-mono text-xs text-emerald-400 select-all">
+                        ?token=Secrettoken
+                      </div>
                     </div>
 
-                    <form onSubmit={handleChangePasscode} className="space-y-4 max-w-sm">
-                      <div>
-                        <label className="text-xs font-semibold opacity-75 block mb-1">
-                          New Secret Code:
-                        </label>
+                    <div className="space-y-3">
+                      <label className="text-xs font-bold uppercase tracking-wider opacity-80">
+                        Update Master Secret Passcode:
+                      </label>
+                      <div className="flex items-center gap-2">
                         <input
                           type="text"
                           value={newPasscode}
                           onChange={(e) => setNewPasscode(e.target.value)}
-                          placeholder="e.g. 962912 or custom code"
-                          className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-mono border outline-none ${
-                            isLight
-                              ? "bg-slate-50 border-slate-200 text-slate-900"
-                              : "bg-black/30 border-white/10 text-white"
-                          }`}
+                          placeholder="Enter new 4+ character secret code"
+                          className="flex-1 px-4 py-2.5 rounded-xl text-sm bg-black/30 border border-white/10 text-white outline-none"
                         />
+                        <button
+                          type="button"
+                          onClick={handleUpdatePasscode}
+                          className="py-2.5 px-4 rounded-xl bg-[oklch(0.65_0.24_25)] hover:bg-[oklch(0.7_0.24_25)] text-white text-xs font-bold transition cursor-pointer"
+                        >
+                          Update Code
+                        </button>
                       </div>
-
-                      <button
-                        type="submit"
-                        className="py-2.5 px-5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs cursor-pointer shadow-md transition"
-                      >
-                        Update Secret Code
-                      </button>
-                    </form>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Action Buttons Footer */}
+              {/* Modal Footer Actions */}
               <div
-                className={`px-6 py-4 border-t flex flex-col sm:flex-row items-center justify-between gap-3 ${
+                className={`px-6 py-4 border-t flex flex-wrap items-center justify-between gap-3 ${
                   isLight ? "border-slate-100 bg-slate-50" : "border-white/10 bg-white/5"
                 }`}
               >
                 <button
                   type="button"
                   onClick={handleResetDefaults}
-                  className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition cursor-pointer"
+                  className="text-xs font-bold text-white/50 hover:text-white transition cursor-pointer"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset to Defaults</span>
+                  Reset Defaults
                 </button>
 
-                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={onClose}
-                    className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                      isLight
-                        ? "border-slate-200 hover:bg-slate-100 text-slate-700"
-                        : "border-white/10 hover:bg-white/10 text-white"
-                    }`}
+                    className="py-2 px-4 rounded-xl text-xs font-semibold text-white/60 hover:text-white transition cursor-pointer"
                   >
                     Cancel
                   </button>
-
                   <button
                     type="button"
                     onClick={handleSaveAll}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[oklch(0.65_0.24_25)] hover:bg-[oklch(0.7_0.24_25)] text-white text-xs font-extrabold shadow-lg shadow-red-500/20 transition cursor-pointer active:scale-95"
+                    className="py-2.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center gap-1.5"
                   >
-                    <Save className="w-4 h-4" />
-                    <span>Save & Apply Changes</span>
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save to Database & Apply</span>
                   </button>
                 </div>
               </div>
@@ -978,6 +1574,71 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
           )}
         </motion.div>
       </div>
+
+      {/* Confirmation Dialog for Goal Reset */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div
+            className={`p-6 rounded-3xl max-w-md w-full border space-y-4 shadow-2xl relative ${
+              isLight
+                ? "bg-white border-slate-200 text-slate-900"
+                : "bg-zinc-950 border-rose-500/30 text-white"
+            }`}
+          >
+            <div className="flex items-center gap-3 text-rose-500">
+              <div className="p-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/20">
+                <AlertTriangle className="w-6 h-6 text-rose-400" />
+              </div>
+              <div>
+                <h4 className="font-black text-base">Reset Goal Payments?</h4>
+                <p className="text-[11px] text-rose-400/80 font-medium">
+                  Irreversible payment database purge
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs opacity-80 leading-relaxed">
+              This will clear all recorded payment transactions from the monthly goal database and
+              reset the total verified raised amount back to{" "}
+              <strong className="text-rose-400 font-black">₹0</strong>. Supporter counts and
+              progress bars will reset to 0%.
+            </p>
+
+            <div className="p-3 rounded-xl bg-black/30 border border-white/5 text-xs text-white/70 space-y-1">
+              <div className="flex justify-between">
+                <span>Current Total Verified:</span>
+                <span className="font-bold text-emerald-400">
+                  ₹{totalRaised.toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Recorded Transactions:</span>
+                <span className="font-bold text-blue-400">{payments.length}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                disabled={isResettingGoal}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleResetGoalPayments}
+                disabled={isResettingGoal}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30 transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isResettingGoal ? "animate-spin" : ""}`} />
+                <span>{isResettingGoal ? "Resetting to ₹0..." : "Yes, Reset to ₹0"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AnimatePresence>
   );
 }

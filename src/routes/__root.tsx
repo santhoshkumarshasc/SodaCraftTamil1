@@ -121,16 +121,6 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9265584196250660"
-          crossOrigin="anonymous"
-        />
-        <script
-          async
-          custom-element="amp-auto-ads"
-          src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js"
-        />
       </head>
       <body>
         {children}
@@ -146,6 +136,17 @@ function RootComponent() {
 
   useEffect(() => {
     setMounted(true);
+    // Dynamically load AdSense after hydration to prevent DOM mismatch
+    try {
+      const script = document.createElement("script");
+      script.async = true;
+      script.src =
+        "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9265584196250660";
+      script.crossOrigin = "anonymous";
+      document.head.appendChild(script);
+    } catch (e) {
+      console.error("AdSense client load error:", e);
+    }
   }, []);
 
   useEffect(() => {

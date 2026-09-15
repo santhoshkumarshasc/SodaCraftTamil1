@@ -65,6 +65,12 @@ export function PaymentReceipt({
   const MethodIcon = methodInfo.icon;
 
   const receiptText = formatWhatsAppMessage(supporter, upiId, payeeName);
+  const creatorWhatsAppUrl = getCreatorWhatsAppUrl(
+    supporter,
+    creatorWhatsAppNumber,
+    upiId,
+    payeeName,
+  );
 
   const handleDownloadPdf = () => {
     toast.info("Opening print dialog. Select 'Save as PDF' to download your receipt!");
@@ -324,18 +330,30 @@ export function PaymentReceipt({
           </div>
 
           {/* DIRECT CREATOR DISPATCH STATUS */}
-          <div className="no-print p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-xs flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
-              <CheckCircle2 className="w-5 h-5" />
+          <div className="no-print p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="font-bold text-emerald-400 block text-xs">
+                  Receipt Dispatched to Creator
+                </span>
+                <span className={`text-[11px] ${isLight ? "text-slate-600" : "text-slate-400"}`}>
+                  Payment details transmitted directly to Creator's WhatsApp
+                </span>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <span className="font-bold text-emerald-400 block text-xs">
-                Receipt Dispatched to Creator
-              </span>
-              <span className={`text-[11px] ${isLight ? "text-slate-600" : "text-slate-400"}`}>
-                Payment record transmitted directly to creator's WhatsApp (+{cleanPhone})
-              </span>
-            </div>
+
+            <a
+              href={creatorWhatsAppUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition cursor-pointer shrink-0"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Send Message to Creator</span>
+            </a>
           </div>
 
           {/* Receipt Action Buttons */}

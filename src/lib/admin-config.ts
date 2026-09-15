@@ -22,12 +22,15 @@ export interface AdminSiteConfig {
   // 3. Amount & Detail
   presetAmounts: number[];
   monthlyGoal: number;
+  goalTitle?: string;
   upiId: string;
   payeeName: string;
   whatsappNumber: string;
   supportTitle: string;
   supportSubtitle: string;
   paymentNote: string;
+  razorpayKeyId?: string;
+  razorpayKeySecret?: string;
 
   // Secret passcode
   secretCode: string;
@@ -91,6 +94,7 @@ export const DEFAULT_ADMIN_CONFIG: AdminSiteConfig = {
   latestVideosUrl: "https://www.youtube.com/@SodaCraftTamil/videos",
   presetAmounts: [50, 100, 250, 500, 1000],
   monthlyGoal: 15000,
+  goalTitle: "Monthly SMP Server & Stream Fund",
   upiId: "santhoshkumarshasc@oksbi",
   payeeName: "SodaCraft Tamil",
   whatsappNumber: "919629123982",
@@ -98,6 +102,8 @@ export const DEFAULT_ADMIN_CONFIG: AdminSiteConfig = {
   supportSubtitle:
     "Fuel next-level Minecraft Tamil adventures, SMP episodes & high-FPS live streams",
   paymentNote: "Support SodaCraft Tamil Gaming",
+  razorpayKeyId: "rzp_live_Tc8MHDDnSr3cwl",
+  razorpayKeySecret: "42rJlLTF0hJc1exM4t7JOLGY",
   secretCode: "9629",
 };
 

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getDbSupporters, addSupporterToDb, getSiteConfigFromDb } from "./db.server";
 
 export type Supporter = {
   id: string;
@@ -38,21 +39,19 @@ const DEFAULT_UPI_ID = "santhoshkumarshasc@oksbi";
 const DEFAULT_PAYEE_NAME = "SodaCraft Tamil";
 const DEFAULT_WHATSAPP_NUMBER = "919629123982";
 const MONTHLY_GOAL = 15000;
+const DEFAULT_RAZORPAY_KEY_ID = "rzp_live_Tc8MHDDnSr3cwl";
+const DEFAULT_RAZORPAY_KEY_SECRET = "42rJlLTF0hJc1exM4t7JOLGY";
 
-// Internal in-memory record of contributions
-const INITIAL_SUPPORTERS: Supporter[] = [];
-let inMemorySupporters: Supporter[] = [...INITIAL_SUPPORTERS];
-
-function generateReceiptNumber(prefix = "SCT-REC"): string {
+function generateReceiptNumber(prefix = "SCT-RZP"): string {
   const year = new Date().getFullYear();
   const random = Math.floor(10000 + Math.random() * 90000);
   return `${prefix}-${year}-${random}`;
 }
 
-function calculateStats(supporters: Supporter[]): SupportStats {
+function calculateStats(supporters: Supporter[], goal = MONTHLY_GOAL): SupportStats {
   const totalSupporters = supporters.length;
   const totalAmountRaised = supporters.reduce((sum, s) => sum + s.amount, 0);
-  const goalProgressPercent = Math.min(100, Math.round((totalAmountRaised / MONTHLY_GOAL) * 100));
+  const goalProgressPercent = Math.min(100, Math.round((totalAmountRaised / (goal || 1)) * 100));
 
   let topSupporter: Supporter | null = null;
   if (supporters.length > 0) {
@@ -62,7 +61,7 @@ function calculateStats(supporters: Supporter[]): SupportStats {
   return {
     totalSupporters,
     totalAmountRaised,
-    monthlyGoal: MONTHLY_GOAL,
+    monthlyGoal: goal,
     goalProgressPercent,
     topSupporter,
   };
@@ -70,17 +69,21 @@ function calculateStats(supporters: Supporter[]): SupportStats {
 
 export const getSupportData = createServerFn({ method: "GET" }).handler(
   async (): Promise<SupportPayload> => {
-    const razorpayKeyId = process.env.RAZORPAY_KEY_ID || "";
-    const whatsappNumber = process.env.CREATOR_WHATSAPP_NUMBER || DEFAULT_WHATSAPP_NUMBER;
+    const config = getSiteConfigFromDb();
+    const supporters = getDbSupporters();
+    const razorpayKeyId =
+      config.razorpayKeyId || process.env.RAZORPAY_KEY_ID || DEFAULT_RAZORPAY_KEY_ID;
+    const whatsappNumber =
+      config.whatsappNumber || process.env.CREATOR_WHATSAPP_NUMBER || DEFAULT_WHATSAPP_NUMBER;
+    const monthlyGoal = config.monthlyGoal || MONTHLY_GOAL;
 
     return {
-      // Intentionally empty for public privacy (remove on public)
-      supporters: [],
-      stats: calculateStats(inMemorySupporters),
+      supporters: [], // Intentionally empty for public privacy
+      stats: calculateStats(supporters, monthlyGoal),
       upiConfig: {
-        upiId: process.env.CREATOR_UPI_ID || DEFAULT_UPI_ID,
-        payeeName: process.env.CREATOR_PAYEE_NAME || DEFAULT_PAYEE_NAME,
-        note: "Support SodaCraft Tamil Gaming",
+        upiId: config.upiId || process.env.CREATOR_UPI_ID || DEFAULT_UPI_ID,
+        payeeName: config.payeeName || process.env.CREATOR_PAYEE_NAME || DEFAULT_PAYEE_NAME,
+        note: config.paymentNote || "Support SodaCraft Tamil Gaming",
         whatsappNumber,
         razorpayKeyId,
         hasRazorpay: Boolean(razorpayKeyId),
@@ -106,8 +109,10 @@ export const createRazorpayOrder = createServerFn({ method: "POST" })
       keyId: string;
       isTest: boolean;
     }> => {
-      const keyId = process.env.RAZORPAY_KEY_ID || "";
-      const keySecret = process.env.RAZORPAY_KEY_SECRET || "";
+      const config = getSiteConfigFromDb();
+      const keyId = config.razorpayKeyId || process.env.RAZORPAY_KEY_ID || DEFAULT_RAZORPAY_KEY_ID;
+      const keySecret =
+        config.razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET || DEFAULT_RAZORPAY_KEY_SECRET;
       const amountPaise = data.amount * 100;
 
       if (keyId && keySecret) {
@@ -153,7 +158,7 @@ export const createRazorpayOrder = createServerFn({ method: "POST" })
         orderId: fallbackOrderId,
         amount: data.amount,
         currency: "INR",
-        keyId: keyId || "rzp_test_sodacraft_demo",
+        keyId: keyId || DEFAULT_RAZORPAY_KEY_ID,
         isTest: !keyId,
       };
     },
@@ -204,14 +209,14 @@ export const submitSupporter = createServerFn({ method: "POST" })
       name: data.name,
       amount: data.amount,
       message: data.message,
-      method: data.method,
+      method: "razorpay", // Strictly Razorpay
       timestamp: new Date().toISOString(),
       receiptNumber,
-      paymentId: data.paymentId,
-      verified: data.verified || data.method === "razorpay",
+      paymentId: data.paymentId || `pay_rzp_${Date.now()}`,
+      verified: true,
     };
 
-    inMemorySupporters = [newSupporter, ...inMemorySupporters];
+    addSupporterToDb(newSupporter);
 
     return {
       success: true,
