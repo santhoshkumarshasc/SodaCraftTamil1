@@ -610,12 +610,16 @@ function SupportPage() {
                     Your Name / GamerTag <span className="text-[oklch(0.65_0.24_25)]">*</span>
                   </label>
                   <input
+                    id="supporter-name"
+                    name="name"
                     type="text"
+                    autoComplete="name"
                     required
                     maxLength={40}
                     placeholder="e.g. Arun_Crafter or TamilGamer"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    onInput={(e) => setName((e.target as HTMLInputElement).value)}
                     className={`w-full px-4 py-2.5 rounded-xl text-sm font-medium border transition outline-none ${
                       isLight
                         ? "bg-slate-50 border-slate-200 focus:border-[oklch(0.65_0.24_25)] text-slate-900"

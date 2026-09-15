@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import {
@@ -31,6 +31,7 @@ import {
   Check,
   Info,
   ExternalLink as ExtLink,
+  Zap,
 } from "lucide-react";
 import {
   getAdminConfig,
@@ -182,14 +183,35 @@ function AdminPage() {
         } catch {
           // ignore
         }
+
+        // Ensure no credentials or passwords are auto-stored or autofilled
+        try {
+          localStorage.removeItem("sodacraft_saved_admin_user");
+          localStorage.removeItem("sodacraft_saved_admin_pass");
+        } catch {
+          // ignore
+        }
       }
     }
     initSession();
   }, [fetchRealtimeData]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!usernameInput.trim() || !passwordInput.trim()) {
+    const form = e.currentTarget;
+    const userInput = form.querySelector<HTMLInputElement>(
+      'input[name="admin_username_no_autofill"]',
+    );
+    const passInput = form.querySelector<HTMLInputElement>(
+      'input[name="admin_password_no_autofill"]',
+    );
+    const domUser = userInput?.value;
+    const domPass = passInput?.value;
+
+    const finalUser = (domUser || usernameInput || "").trim();
+    const finalPass = (domPass || passwordInput || "").trim();
+
+    if (!finalUser || !finalPass) {
       toast.error("Please enter both username/email and password");
       return;
     }
@@ -198,9 +220,9 @@ function AdminPage() {
     try {
       const res = await adminLoginAccountFn({
         data: {
-          identifier: usernameInput.trim(),
-          secret: passwordInput.trim(),
-          passwordOrPasscode: passwordInput.trim(),
+          identifier: finalUser,
+          secret: finalPass,
+          passwordOrPasscode: finalPass,
         },
       });
 
@@ -210,6 +232,14 @@ function AdminPage() {
         setCurrentAccount(res.account);
         sessionStorage.setItem("sodacraft_admin_token", res.token);
         sessionStorage.setItem("sodacraft_admin_account", JSON.stringify(res.account));
+
+        // Always clean any saved credentials
+        try {
+          localStorage.removeItem("sodacraft_saved_admin_user");
+          localStorage.removeItem("sodacraft_saved_admin_pass");
+        } catch {
+          // ignore
+        }
 
         toast.success(`Welcome back, ${res.account.username}!`);
         await fetchRealtimeData(res.token);
@@ -579,13 +609,29 @@ function AdminPage() {
                 Sign in to manage Razorpay payments, real-time receipts & support settings
               </p>
 
-              <form onSubmit={handleLogin} className="space-y-4 text-left">
+              <form
+                onSubmit={handleLogin}
+                className="space-y-4 text-left"
+                autoComplete="off"
+                data-form-type="other"
+              >
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-80">
+                  <label
+                    htmlFor="admin-login-username"
+                    className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-80"
+                  >
                     Username or Admin Email:
                   </label>
                   <input
+                    id="admin-login-username"
+                    name="admin_username_no_autofill"
                     type="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
                     placeholder="Enter Admin Username or Email"
@@ -599,12 +645,23 @@ function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-80">
+                  <label
+                    htmlFor="admin-login-password"
+                    className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-80"
+                  >
                     Password / Master Passcode:
                   </label>
                   <div className="relative">
                     <input
+                      id="admin-login-password"
+                      name="admin_password_no_autofill"
                       type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       value={passwordInput}
                       onChange={(e) => setPasswordInput(e.target.value)}
                       placeholder="Enter Admin Password"
@@ -618,19 +675,11 @@ function AdminPage() {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition cursor-pointer"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <span className={`text-[11px] ${isLight ? "text-slate-400" : "text-white/40"}`}>
-                    Protected Database Access
-                  </span>
-                  <span className="text-[11px] text-emerald-400 font-medium">
-                    Verified SodaCraft Portal
-                  </span>
                 </div>
 
                 <button
@@ -802,6 +851,9 @@ function AdminPage() {
                       <input
                         type="number"
                         value={config.monthlyGoal}
+                        autoComplete="off"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(e) =>
                           setConfig((prev) => ({
                             ...prev,
@@ -818,6 +870,10 @@ function AdminPage() {
                       <input
                         type="text"
                         value={config.goalTitle}
+                        autoComplete="off"
+                        spellCheck={false}
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(e) =>
                           setConfig((prev) => ({ ...prev, goalTitle: e.target.value }))
                         }
@@ -835,6 +891,10 @@ function AdminPage() {
                       <input
                         type="text"
                         value={config.supportTitle}
+                        autoComplete="off"
+                        spellCheck={false}
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(e) =>
                           setConfig((prev) => ({ ...prev, supportTitle: e.target.value }))
                         }
@@ -848,6 +908,10 @@ function AdminPage() {
                       <input
                         type="text"
                         value={config.supportSubtitle}
+                        autoComplete="off"
+                        spellCheck={false}
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(e) =>
                           setConfig((prev) => ({ ...prev, supportSubtitle: e.target.value }))
                         }
@@ -865,6 +929,10 @@ function AdminPage() {
                       <input
                         type="text"
                         value={config.whatsappNumber}
+                        autoComplete="off"
+                        spellCheck={false}
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(e) =>
                           setConfig((prev) => ({
                             ...prev,
@@ -886,6 +954,10 @@ function AdminPage() {
                       <input
                         type="text"
                         value={config.upiId}
+                        autoComplete="off"
+                        spellCheck={false}
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(e) =>
                           setConfig((prev) => ({ ...prev, upiId: e.target.value.trim() }))
                         }
@@ -900,6 +972,10 @@ function AdminPage() {
                       <input
                         type="text"
                         value={config.payeeName}
+                        autoComplete="off"
+                        spellCheck={false}
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(e) =>
                           setConfig((prev) => ({ ...prev, payeeName: e.target.value }))
                         }
@@ -922,6 +998,10 @@ function AdminPage() {
                         <input
                           type="text"
                           value={config.razorpayKeyId || ""}
+                          autoComplete="off"
+                          spellCheck={false}
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                           onChange={(e) =>
                             setConfig((prev) => ({ ...prev, razorpayKeyId: e.target.value.trim() }))
                           }
@@ -935,6 +1015,10 @@ function AdminPage() {
                         <input
                           type="password"
                           value={config.razorpayKeySecret || ""}
+                          autoComplete="new-password"
+                          spellCheck={false}
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                           onChange={(e) =>
                             setConfig((prev) => ({
                               ...prev,
@@ -973,6 +1057,9 @@ function AdminPage() {
                       <input
                         type="number"
                         value={newPresetAmount}
+                        autoComplete="off"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(e) => setNewPresetAmount(e.target.value)}
                         placeholder="Add amount (e.g. 2000)"
                         className="flex-1 px-3 py-1.5 rounded-xl text-xs bg-black/30 border border-white/10 text-white outline-none"
@@ -1116,6 +1203,10 @@ function AdminPage() {
                           <input
                             type="url"
                             value={item.href}
+                            autoComplete="off"
+                            spellCheck={false}
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             onChange={(e) => handleUpdateSocialLinkHref(item.id, e.target.value)}
                             placeholder="https://..."
                             className="flex-1 px-3 py-1.5 rounded-lg text-xs bg-black/30 border border-white/10 text-white outline-none"
@@ -1139,6 +1230,10 @@ function AdminPage() {
                       <input
                         type="text"
                         value={newLinkLabel}
+                        autoComplete="off"
+                        spellCheck={false}
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(e) => setNewLinkLabel(e.target.value)}
                         placeholder="Label (e.g. Discord)"
                         className="px-3 py-2 rounded-xl text-xs bg-black/30 border border-white/10 text-white outline-none"
@@ -1146,6 +1241,10 @@ function AdminPage() {
                       <input
                         type="url"
                         value={newLinkHref}
+                        autoComplete="off"
+                        spellCheck={false}
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(e) => setNewLinkHref(e.target.value)}
                         placeholder="https://..."
                         className="px-3 py-2 rounded-xl text-xs bg-black/30 border border-white/10 text-white outline-none"
@@ -1233,6 +1332,7 @@ function AdminPage() {
                             onChange={(e) => setNewAccUser(e.target.value)}
                             placeholder="e.g. mod_santhosh"
                             required
+                            autoComplete="off"
                             className="w-full px-3 py-2 rounded-xl text-xs bg-black/30 border border-white/10 text-white outline-none"
                           />
                         </div>
@@ -1245,6 +1345,7 @@ function AdminPage() {
                             value={newAccEmail}
                             onChange={(e) => setNewAccEmail(e.target.value)}
                             placeholder="admin@example.com"
+                            autoComplete="off"
                             className="w-full px-3 py-2 rounded-xl text-xs bg-black/30 border border-white/10 text-white outline-none"
                           />
                         </div>
@@ -1261,6 +1362,7 @@ function AdminPage() {
                             onChange={(e) => setNewAccPass(e.target.value)}
                             placeholder="Strong admin password"
                             required
+                            autoComplete="new-password"
                             className="w-full px-3 py-2 rounded-xl text-xs bg-black/30 border border-white/10 text-white outline-none"
                           />
                         </div>
@@ -1327,6 +1429,7 @@ function AdminPage() {
                             value={urlTokenInput}
                             onChange={(e) => setUrlTokenInput(e.target.value)}
                             placeholder="custom"
+                            autoComplete="off"
                             className="w-full pl-18 pr-4 py-2 rounded-xl text-sm bg-black/40 border border-white/15 text-white font-mono outline-none focus:border-amber-400"
                           />
                         </div>
@@ -1397,10 +1500,14 @@ function AdminPage() {
                     </label>
                     <div className="flex items-center gap-2">
                       <input
-                        type="text"
+                        type="password"
                         value={newPasscode}
                         onChange={(e) => setNewPasscode(e.target.value)}
                         placeholder="Enter new 4+ character secret code"
+                        autoComplete="new-password"
+                        spellCheck={false}
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         className="flex-1 px-4 py-2.5 rounded-xl text-sm bg-black/30 border border-white/10 text-white outline-none focus:border-[oklch(0.65_0.24_25)]"
                       />
                       <button

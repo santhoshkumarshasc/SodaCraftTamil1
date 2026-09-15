@@ -693,7 +693,8 @@ function Home() {
               )}
               <a
                 href={
-                  config.socialLinks.youtubeMain ||
+                  config.subscribeUrl ||
+                  config.socialLinks?.find((l) => l.id === "sodacraft")?.href ||
                   "https://www.youtube.com/@SodaCraftTamil?sub_confirmation=1"
                 }
                 target="_blank"
@@ -1253,72 +1254,70 @@ function Home() {
             Follow across all platforms for daily updates
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-2.5">
-            {[
-              {
-                label: "SodaPuttiGamer",
-                href: config.socialLinks.youtubePutti || "https://www.youtube.com/@SodaPuttiGamer",
-                icon: "M23.5 6.2a3 3 0 0 0-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 0 0 2.1-2.1c.3-1.9.5-3.8.5-5.8 0-2-.2-3.9-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z",
-              },
-              {
-                label: "SodaCraftTamil",
-                href: config.socialLinks.youtubeMain || "https://www.youtube.com/@SodaCraftTamil",
-                icon: "M23.5 6.2a3 3 0 0 0-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 0 0 2.1-2.1c.3-1.9.5-3.8.5-5.8 0-2-.2-3.9-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z",
-              },
-              {
-                label: "SodaCraftTamil 2.O",
-                href: config.socialLinks.youtube2 || "https://www.youtube.com/@SodaCraftTamil2.0",
-                icon: "M23.5 6.2a3 3 0 0 0-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 0 0 2.1-2.1c.3-1.9.5-3.8.5-5.8 0-2-.2-3.9-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z",
-              },
-              {
-                label: "Instagram",
-                href: config.socialLinks.instagram || "https://www.instagram.com/sodacrafttamil",
-                icon: "M12 2.2c3.2 0 3.6 0 4.8.1 1.2.1 1.9.2 2.4.4.6.2 1 .5 1.5 1s.8.9 1 1.5c.2.5.4 1.2.4 2.4.1 1.2.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 1.2-.2 1.9-.4 2.4-.2.6-.5 1-1 1.5s-.9.8-1.5 1c-.5.2-1.2.4-2.4.4-1.2.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-1.2-.1-1.9-.2-2.4-.4-.6-.2-1-.5-1.5-1s-.8-.9-1-1.5c-.2-.5-.4-1.2-.4-2.4C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8c.1-1.2.2-1.9.4-2.4.2-.6.5-1 1-1.5s.9-.8 1.5-1c.5-.2 1.2-.4 2.4-.4C8.4 2.2 8.8 2.2 12 2.2zm0 5.6a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4zm5.4-.6a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM12 9.8a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4z",
-              },
-              {
-                label: "Discord",
-                href: config.socialLinks.discord || "https://discord.com/invite/XRUkfZnpfv",
-                icon: "M20.3 4.4A19 19 0 0 0 15.7 3l-.2.4a17.5 17.5 0 0 0-7 0L8.3 3a19 19 0 0 0-4.6 1.4A20 20 0 0 0 .3 17.6a19 19 0 0 0 5.8 2.9l.5-.6a13 13 0 0 1-2-.9l.2-.1a13.6 13.6 0 0 0 13.4 0l.2.1a13 13 0 0 1-2 .9l.5.6a19 19 0 0 0 5.8-2.9 20 20 0 0 0-3.4-13.2zM8.5 15.3a2.3 2.3 0 0 1 0-4.5 2.3 2.3 0 0 1 0 4.5zm7 0a2.3 2.3 0 0 1 0-4.5 2.3 2.3 0 0 1 0 4.5z",
-              },
-              {
-                label: "WhatsApp Channel",
-                href:
-                  config.socialLinks.whatsappChannel || "https://whatsapp.com/channel/sodacraft",
-                icon: "M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.204 8.204 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.24 8.24-1.44 0-2.85-.38-4.08-1.1l-.29-.17-3.03.79.81-2.95-.19-.3a8.216 8.216 0 0 1-1.26-4.33c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.64c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.07-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.43s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.86.84-.86 2.05s.88 2.38 1 2.54c.12.17 1.73 2.64 4.2 3.7.59.25 1.05.41 1.41.52.59.19 1.13.16 1.56.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.22-.17-.47-.29z",
-              },
-            ].map((s) => {
-              const isBlank = !s.href || s.href.trim() === "" || s.href === "#";
-              return (
-                <a
-                  key={s.label}
-                  href={isBlank ? "#" : s.href}
-                  target={isBlank ? undefined : "_blank"}
-                  rel={isBlank ? undefined : "noreferrer"}
-                  onClick={(e) => {
-                    if (isBlank) {
-                      e.preventDefault();
-                      toast.error(`${s.label} is not available yet!`, {
-                        description: "Check back later for updates.",
-                        duration: 3000,
-                      });
-                    }
-                  }}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium backdrop-blur transition ${
-                    isLight
-                      ? "bg-slate-200/80 hover:bg-slate-300 text-slate-800 animate-none"
-                      : "bg-white/10 hover:bg-white/20 text-white"
-                  }`}
-                >
-                  <svg
-                    className={`h-4 w-4 ${isLight ? "fill-slate-800" : "fill-white"}`}
-                    viewBox="0 0 24 24"
-                    aria-hidden
+            {(config.socialLinks || [])
+              .filter((item) => item.enabled !== false && item.href && item.href.trim() !== "")
+              .map((s) => {
+                const isBlank = !s.href || s.href.trim() === "" || s.href === "#";
+                const key = `${s.id} ${s.label}`.toLowerCase();
+                let iconPath =
+                  "M10.59 13.41c.41.39.41 1.03 0 1.42-.39.39-1.03.39-1.42 0a5.003 5.003 0 0 1 0-7.07l3.54-3.54a5.003 5.003 0 0 1 7.07 0 5.003 5.003 0 0 1 0 7.07l-1.49 1.49c.01-.82-.12-1.64-.4-2.42l.47-.48a2.982 2.982 0 0 0 0-4.24 2.982 2.982 0 0 0-4.24 0l-3.53 3.53a2.982 2.982 0 0 0 0 4.24zm2.82-2.82c-.41-.39-.41-1.03 0-1.42.39-.39 1.03-.39 1.42 0a5.003 5.003 0 0 1 0 7.07l-3.54 3.54a5.003 5.003 0 0 1-7.07 0 5.003 5.003 0 0 1 0-7.07l1.49-1.49c-.01.82.12 1.64.4 2.42l-.47.48a2.982 2.982 0 0 0 0 4.24 2.982 2.982 0 0 0 4.24 0l3.53-3.53a2.982 2.982 0 0 0 0-4.24z";
+
+                if (
+                  key.includes("youtube") ||
+                  key.includes("sodacraft") ||
+                  key.includes("sodaputti")
+                ) {
+                  iconPath =
+                    "M23.5 6.2a3 3 0 0 0-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 0 0 2.1-2.1c.3-1.9.5-3.8.5-5.8 0-2-.2-3.9-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z";
+                } else if (key.includes("instagram") || key.includes("insta")) {
+                  iconPath =
+                    "M12 2.2c3.2 0 3.6 0 4.8.1 1.2.1 1.9.2 2.4.4.6.2 1 .5 1.5 1s.8.9 1 1.5c.2.5.4 1.2.4 2.4.1 1.2.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 1.2-.2 1.9-.4 2.4-.2.6-.5 1-1 1.5s-.9.8-1.5 1c-.5.2-1.2.4-2.4.4-1.2.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-1.2-.1-1.9-.2-2.4-.4-.6-.2-1-.5-1.5-1s-.8-.9-1-1.5c-.2-.5-.4-1.2-.4-2.4C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8c.1-1.2.2-1.9.4-2.4.2-.6.5-1 1-1.5s.9-.8 1.5-1c.5-.2 1.2-.4 2.4-.4C8.4 2.2 8.8 2.2 12 2.2zm0 5.6a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4zm5.4-.6a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM12 9.8a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4z";
+                } else if (key.includes("discord")) {
+                  iconPath =
+                    "M20.3 4.4A19 19 0 0 0 15.7 3l-.2.4a17.5 17.5 0 0 0-7 0L8.3 3a19 19 0 0 0-4.6 1.4A20 20 0 0 0 .3 17.6a19 19 0 0 0 5.8 2.9l.5-.6a13 13 0 0 1-2-.9l.2-.1a13.6 13.6 0 0 0 13.4 0l.2.1a13 13 0 0 1-2 .9l.5.6a19 19 0 0 0 5.8-2.9 20 20 0 0 0-3.4-13.2zM8.5 15.3a2.3 2.3 0 0 1 0-4.5 2.3 2.3 0 0 1 0 4.5zm7 0a2.3 2.3 0 0 1 0-4.5 2.3 2.3 0 0 1 0 4.5z";
+                } else if (key.includes("whatsapp") || key.includes("chat")) {
+                  iconPath =
+                    "M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.204 8.204 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.24 8.24-1.44 0-2.85-.38-4.08-1.1l-.29-.17-3.03.79.81-2.95-.19-.3a8.216 8.216 0 0 1-1.26-4.33c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.64c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.07-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.43s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.86.84-.86 2.05s.88 2.38 1 2.54c.12.17 1.73 2.64 4.2 3.7.59.25 1.05.41 1.41.52.59.19 1.13.16 1.56.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.22-.17-.47-.29z";
+                } else if (key.includes("twitter") || key.includes("x")) {
+                  iconPath =
+                    "M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z";
+                } else if (key.includes("facebook") || key.includes("fb")) {
+                  iconPath =
+                    "M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z";
+                }
+
+                return (
+                  <a
+                    key={s.id || s.label}
+                    href={isBlank ? "#" : s.href}
+                    target={isBlank ? undefined : "_blank"}
+                    rel={isBlank ? undefined : "noreferrer"}
+                    onClick={(e) => {
+                      if (isBlank) {
+                        e.preventDefault();
+                        toast.error(`${s.label} is not configured yet!`, {
+                          description: "Check back later for updates.",
+                          duration: 3000,
+                        });
+                      }
+                    }}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium backdrop-blur transition ${
+                      isLight
+                        ? "bg-slate-200/80 hover:bg-slate-300 text-slate-800 animate-none"
+                        : "bg-white/10 hover:bg-white/20 text-white"
+                    }`}
                   >
-                    <path d={s.icon} />
-                  </svg>
-                  {s.label}
-                </a>
-              );
-            })}
+                    <svg
+                      className={`h-4 w-4 ${isLight ? "fill-slate-800" : "fill-white"}`}
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                    >
+                      <path d={iconPath} />
+                    </svg>
+                    {s.label}
+                  </a>
+                );
+              })}
           </div>
         </div>
 

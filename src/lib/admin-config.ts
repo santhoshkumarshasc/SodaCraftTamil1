@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { getDbConfigFn } from "./admin.functions";
 
 export interface SiteSocialLink {
   id: string;
@@ -156,6 +157,19 @@ export function useAdminConfig() {
   useEffect(() => {
     setMounted(true);
     setConfig(getAdminConfig());
+
+    // Asynchronously fetch live configuration from the database
+    getDbConfigFn()
+      .then((dbConfig) => {
+        if (dbConfig && typeof dbConfig === "object") {
+          saveAdminConfig(dbConfig);
+          setConfig(dbConfig);
+        }
+      })
+      .catch((err) => {
+        // Fallback gracefully to localStorage
+        console.warn("Could not sync live database config:", err);
+      });
 
     const handleUpdate = () => {
       setConfig(getAdminConfig());

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import {
@@ -26,6 +26,7 @@ import {
   Sliders,
   Copy,
   Info,
+  Zap,
 } from "lucide-react";
 import {
   getAdminConfig,
@@ -64,7 +65,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
   } | null>(null);
 
   // Login Form States
-  const [usernameInput, setUsernameInput] = useState("admin");
+  const [usernameInput, setUsernameInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -144,6 +145,13 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
       } else {
         setIsAuthenticated(false);
         setPasswordInput("");
+        // Ensure no autofilled credentials
+        try {
+          localStorage.removeItem("sodacraft_saved_admin_user");
+          localStorage.removeItem("sodacraft_saved_admin_pass");
+        } catch {
+          // ignore
+        }
       }
     }
   }, [isOpen, fetchRealtimeData]);
@@ -159,7 +167,20 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!passwordInput.trim()) {
+    const form = e ? (e.currentTarget as HTMLFormElement) : null;
+    const userInput = form?.querySelector<HTMLInputElement>(
+      'input[name="modal_username_no_autofill"]',
+    );
+    const passInput = form?.querySelector<HTMLInputElement>(
+      'input[name="modal_password_no_autofill"]',
+    );
+    const domUser = userInput?.value;
+    const domPass = passInput?.value;
+
+    const finalUser = (domUser || usernameInput || "").trim();
+    const finalPass = (domPass || passwordInput || "").trim();
+
+    if (!finalPass) {
       toast.error("Please enter password or passcode");
       return;
     }
@@ -167,8 +188,9 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
     try {
       const res = await adminLoginAccountFn({
         data: {
-          identifier: usernameInput.trim(),
-          secret: passwordInput.trim(),
+          identifier: finalUser,
+          secret: finalPass,
+          passwordOrPasscode: finalPass,
         },
       });
 
@@ -180,13 +202,18 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
         }
         sessionStorage.setItem("sodacraft_admin_token", res.token);
         sessionStorage.setItem("sodacraft_admin_authenticated", "true");
+
+        try {
+          localStorage.removeItem("sodacraft_saved_admin_user");
+          localStorage.removeItem("sodacraft_saved_admin_pass");
+        } catch {
+          // ignore
+        }
+
         toast.success("🔓 Admin access granted! Connected to live database.");
-        setPasswordInput("");
         fetchRealtimeData(res.token);
       } else {
-        toast.error(
-          res.message || "Invalid credentials. Hint: Passcode 9629 or SecretAdminPassword9629",
-        );
+        toast.error(res.message || "Invalid credentials. Please verify your details.");
       }
     } catch (err) {
       console.error("Login error:", err);
@@ -562,13 +589,29 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                 Sign in to manage Razorpay payments, real-time receipts & admin accounts
               </p>
 
-              <form onSubmit={handleLogin} className="space-y-4 text-left">
+              <form
+                onSubmit={handleLogin}
+                className="space-y-4 text-left"
+                autoComplete="off"
+                data-form-type="other"
+              >
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-80">
+                  <label
+                    htmlFor="modal-login-username"
+                    className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-80"
+                  >
                     Username or Admin Email:
                   </label>
                   <input
+                    id="modal-login-username"
+                    name="modal_username_no_autofill"
                     type="text"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
                     placeholder="Enter Admin Username or Email"
@@ -582,12 +625,23 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-80">
+                  <label
+                    htmlFor="modal-login-password"
+                    className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-80"
+                  >
                     Password / Master Passcode:
                   </label>
                   <div className="relative">
                     <input
+                      id="modal-login-password"
+                      name="modal_password_no_autofill"
                       type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       value={passwordInput}
                       onChange={(e) => setPasswordInput(e.target.value)}
                       placeholder="Enter Admin Password"
@@ -601,19 +655,11 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition cursor-pointer"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <span className={`text-[11px] ${isLight ? "text-slate-400" : "text-white/40"}`}>
-                    Protected Database Access
-                  </span>
-                  <span className="text-[11px] text-emerald-400 font-medium">
-                    Verified SodaCraft Portal
-                  </span>
                 </div>
 
                 <button
@@ -786,6 +832,9 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <input
                             type="number"
                             value={config.monthlyGoal}
+                            autoComplete="off"
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             onChange={(e) =>
                               setConfig((prev) => ({
                                 ...prev,
@@ -807,6 +856,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <input
                             type="text"
                             value={config.goalTitle || ""}
+                            autoComplete="off"
+                            spellCheck={false}
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             onChange={(e) =>
                               setConfig((prev) => ({
                                 ...prev,
@@ -844,6 +897,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <input
                             type="text"
                             value={config.supportTitle}
+                            autoComplete="off"
+                            spellCheck={false}
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             onChange={(e) =>
                               setConfig((prev) => ({ ...prev, supportTitle: e.target.value }))
                             }
@@ -863,6 +920,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <input
                             type="text"
                             value={config.payeeName}
+                            autoComplete="off"
+                            spellCheck={false}
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             onChange={(e) =>
                               setConfig((prev) => ({ ...prev, payeeName: e.target.value }))
                             }
@@ -883,6 +944,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                         <textarea
                           rows={2}
                           value={config.supportSubtitle}
+                          autoComplete="off"
+                          spellCheck={false}
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                           onChange={(e) =>
                             setConfig((prev) => ({ ...prev, supportSubtitle: e.target.value }))
                           }
@@ -902,6 +967,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                         <input
                           type="text"
                           value={config.paymentNote}
+                          autoComplete="off"
+                          spellCheck={false}
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                           onChange={(e) =>
                             setConfig((prev) => ({ ...prev, paymentNote: e.target.value }))
                           }
@@ -941,6 +1010,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <input
                             type="text"
                             value={config.razorpayKeyId || ""}
+                            autoComplete="off"
+                            spellCheck={false}
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             onChange={(e) =>
                               setConfig((prev) => ({
                                 ...prev,
@@ -980,6 +1053,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <input
                             type={showSecretKey ? "text" : "password"}
                             value={config.razorpayKeySecret || ""}
+                            autoComplete="new-password"
+                            spellCheck={false}
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             onChange={(e) =>
                               setConfig((prev) => ({
                                 ...prev,
@@ -1022,6 +1099,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <input
                             type="text"
                             value={config.whatsappNumber}
+                            autoComplete="off"
+                            spellCheck={false}
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             onChange={(e) =>
                               setConfig((prev) => ({
                                 ...prev,
@@ -1048,6 +1129,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <input
                             type="text"
                             value={config.upiId}
+                            autoComplete="off"
+                            spellCheck={false}
+                            data-lpignore="true"
+                            data-1p-ignore="true"
                             onChange={(e) =>
                               setConfig((prev) => ({
                                 ...prev,
@@ -1101,6 +1186,9 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                         <input
                           type="number"
                           value={newPresetAmount}
+                          autoComplete="off"
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                           onChange={(e) => setNewPresetAmount(e.target.value)}
                           placeholder="Add ₹ (e.g. 750)"
                           className="px-3.5 py-2 rounded-xl text-xs bg-black/20 border border-white/10 outline-none w-36"
@@ -1375,7 +1463,12 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                         <UserPlus className="w-4 h-4 text-emerald-400" />
                         <span>Add New Admin Account to Database</span>
                       </h5>
-                      <form onSubmit={handleCreateAccount} className="space-y-3">
+                      <form
+                        onSubmit={handleCreateAccount}
+                        className="space-y-3"
+                        autoComplete="off"
+                        data-form-type="other"
+                      >
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <label className="text-[11px] font-bold opacity-75 block mb-1">
@@ -1384,6 +1477,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                             <input
                               type="text"
                               value={newAccUser}
+                              autoComplete="off"
+                              spellCheck={false}
+                              data-lpignore="true"
+                              data-1p-ignore="true"
                               onChange={(e) => setNewAccUser(e.target.value)}
                               placeholder="e.g. mod_santhosh"
                               required
@@ -1401,6 +1498,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                             <input
                               type="email"
                               value={newAccEmail}
+                              autoComplete="off"
+                              spellCheck={false}
+                              data-lpignore="true"
+                              data-1p-ignore="true"
                               onChange={(e) => setNewAccEmail(e.target.value)}
                               placeholder="e.g. admin@sodacraft.com"
                               className={`w-full px-3 py-2 rounded-xl text-xs border outline-none ${
@@ -1420,6 +1521,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                             <input
                               type="password"
                               value={newAccPass}
+                              autoComplete="new-password"
+                              spellCheck={false}
+                              data-lpignore="true"
+                              data-1p-ignore="true"
                               onChange={(e) => setNewAccPass(e.target.value)}
                               placeholder="Strong admin password"
                               required
@@ -1484,6 +1589,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                               <input
                                 type="text"
                                 value={link.label}
+                                autoComplete="off"
+                                spellCheck={false}
+                                data-lpignore="true"
+                                data-1p-ignore="true"
                                 onChange={(e) =>
                                   handleUpdateSocialLink(link.id, { label: e.target.value })
                                 }
@@ -1493,6 +1602,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                               <input
                                 type="url"
                                 value={link.href}
+                                autoComplete="off"
+                                spellCheck={false}
+                                data-lpignore="true"
+                                data-1p-ignore="true"
                                 onChange={(e) =>
                                   handleUpdateSocialLink(link.id, { href: e.target.value })
                                 }
@@ -1521,6 +1634,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                         <input
                           type="text"
                           value={newLinkLabel}
+                          autoComplete="off"
+                          spellCheck={false}
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                           onChange={(e) => setNewLinkLabel(e.target.value)}
                           placeholder="e.g. Discord Community"
                           className="px-3 py-2 rounded-lg text-xs bg-black/20 border border-white/10 outline-none"
@@ -1528,6 +1645,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                         <input
                           type="url"
                           value={newLinkHref}
+                          autoComplete="off"
+                          spellCheck={false}
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                           onChange={(e) => setNewLinkHref(e.target.value)}
                           placeholder="https://discord.gg/..."
                           className="px-3 py-2 rounded-lg text-xs bg-black/20 border border-white/10 outline-none"
@@ -1578,6 +1699,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                             <input
                               type="text"
                               value={urlTokenInput}
+                              autoComplete="off"
+                              spellCheck={false}
+                              data-lpignore="true"
+                              data-1p-ignore="true"
                               onChange={(e) => setUrlTokenInput(e.target.value)}
                               placeholder="custom"
                               className="w-full pl-18 pr-4 py-2 rounded-xl text-sm bg-black/40 border border-white/15 text-white font-mono outline-none focus:border-amber-400"
@@ -1663,6 +1788,10 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                         <input
                           type="text"
                           value={newPasscode}
+                          autoComplete="off"
+                          spellCheck={false}
+                          data-lpignore="true"
+                          data-1p-ignore="true"
                           onChange={(e) => setNewPasscode(e.target.value)}
                           placeholder="Enter new 4+ character secret code"
                           className="flex-1 px-4 py-2.5 rounded-xl text-sm bg-black/30 border border-white/10 text-white outline-none focus:border-[oklch(0.65_0.24_25)]"

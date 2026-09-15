@@ -55,28 +55,42 @@ function ensureDataDir(): void {
 }
 
 export function readDb(): DbSchema {
-  if (cachedDb) return cachedDb;
-
   ensureDataDir();
   try {
     if (fs.existsSync(DB_FILE)) {
       const raw = fs.readFileSync(DB_FILE, "utf-8");
-      const parsed = JSON.parse(raw) as Partial<DbSchema>;
-      cachedDb = {
-        adminAccounts:
-          Array.isArray(parsed.adminAccounts) && parsed.adminAccounts.length > 0
-            ? parsed.adminAccounts
-            : [DEFAULT_ADMIN],
-        config: { ...DEFAULT_ADMIN_CONFIG, ...parsed.config },
-        supporters: Array.isArray(parsed.supporters) ? parsed.supporters : INITIAL_SUPPORTERS,
-        sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
-        lastUpdated: parsed.lastUpdated || Date.now(),
-      };
-      return cachedDb;
+      if (raw && raw.trim().length > 0) {
+        const parsed = JSON.parse(raw) as Partial<DbSchema>;
+        const db: DbSchema = {
+          adminAccounts:
+            Array.isArray(parsed.adminAccounts) && parsed.adminAccounts.length > 0
+              ? parsed.adminAccounts
+              : [DEFAULT_ADMIN],
+          config: {
+            ...DEFAULT_ADMIN_CONFIG,
+            ...(parsed.config || {}),
+            socialLinks:
+              Array.isArray(parsed.config?.socialLinks) && parsed.config.socialLinks.length > 0
+                ? parsed.config.socialLinks
+                : DEFAULT_ADMIN_CONFIG.socialLinks,
+            presetAmounts:
+              Array.isArray(parsed.config?.presetAmounts) && parsed.config.presetAmounts.length > 0
+                ? parsed.config.presetAmounts
+                : DEFAULT_ADMIN_CONFIG.presetAmounts,
+          },
+          supporters: Array.isArray(parsed.supporters) ? parsed.supporters : INITIAL_SUPPORTERS,
+          sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+          lastUpdated: parsed.lastUpdated || Date.now(),
+        };
+        cachedDb = db;
+        return db;
+      }
     }
   } catch (err) {
-    console.error("Error reading database file, using defaults:", err);
+    console.error("Error reading database file, using fallback:", err);
   }
+
+  if (cachedDb) return cachedDb;
 
   const initialDb: DbSchema = {
     adminAccounts: [DEFAULT_ADMIN],
@@ -232,7 +246,16 @@ export function deleteSupporterFromDb(id: string): { success: boolean; message: 
 
 export function updateSiteConfigInDb(newConfig: Partial<AdminSiteConfig>): AdminSiteConfig {
   const db = readDb();
-  db.config = { ...db.config, ...newConfig };
+  db.config = {
+    ...db.config,
+    ...newConfig,
+    socialLinks: Array.isArray(newConfig.socialLinks)
+      ? newConfig.socialLinks
+      : db.config.socialLinks,
+    presetAmounts: Array.isArray(newConfig.presetAmounts)
+      ? newConfig.presetAmounts
+      : db.config.presetAmounts,
+  };
   writeDb(db);
   return db.config;
 }
