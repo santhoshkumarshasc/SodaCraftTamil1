@@ -163,3 +163,31 @@
   width: max-content;
   animation: marquee 25s linear infinite;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-payment-receipt,
+  #printable-payment-receipt * {
+    visibility: visible;
+  }
+
+  #printable-payment-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 650px !important;
+    margin: 0 auto;
+    border: 1px solid #ddd !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

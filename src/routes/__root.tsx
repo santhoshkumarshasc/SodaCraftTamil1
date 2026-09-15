@@ -85,11 +85,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "SodaCraft Tamil - Official Gaming & Support" },
+      {
+        name: "description",
+        content:
+          "Official creator support page for SodaCraft Tamil featuring UPI QR, custom amount support, Razorpay payment confirmation, and direct WhatsApp payment receipt delivery.",
+      },
+      { name: "author", content: "SodaCraft Tamil" },
+      { property: "og:title", content: "SodaCraft Tamil - Official Gaming & Support" },
+      {
+        property: "og:description",
+        content:
+          "Official creator support page for SodaCraft Tamil featuring UPI QR, custom amount support, Razorpay payment confirmation, and direct WhatsApp payment receipt delivery.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },

@@ -1,6 +1,6 @@
 {
   "name": "SodaCraft Tamil - Official Gaming & Support",
-  "description": "Official gaming channel website and creator support page for SodaCraft Tamil with UPI, GPay, and live supporter board.",
+  "description": "Official creator support page for SodaCraft Tamil featuring UPI QR, custom amount support, Razorpay payment confirmation, and direct WhatsApp payment receipt delivery.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

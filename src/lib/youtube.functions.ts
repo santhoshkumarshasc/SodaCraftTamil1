@@ -20,6 +20,7 @@ export type VideoItem = {
   thumbnail: string;
   publishedAt: string;
   url: string;
+  views?: string | number;
 };
 
 export type LiveStream = {
@@ -71,6 +72,7 @@ const MOCK_PAYLOAD: ChannelPayload = {
         "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=600&q=80",
       publishedAt: new Date(Date.now() - 3600000 * 4).toISOString(), // 4 hours ago
       url: "https://www.youtube.com/watch?v=mock-vid1",
+      views: "48.2K",
     },
     {
       id: "vid2",
@@ -79,6 +81,7 @@ const MOCK_PAYLOAD: ChannelPayload = {
         "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=600&q=80",
       publishedAt: new Date(Date.now() - 3600000 * 28).toISOString(), // 1.2 days ago
       url: "https://www.youtube.com/watch?v=mock-vid2",
+      views: "31.5K",
     },
     {
       id: "vid3",
@@ -87,6 +90,7 @@ const MOCK_PAYLOAD: ChannelPayload = {
         "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80",
       publishedAt: new Date(Date.now() - 3600000 * 24 * 3).toISOString(), // 3 days ago
       url: "https://www.youtube.com/watch?v=mock-vid3",
+      views: "124K",
     },
     {
       id: "vid4",
@@ -95,6 +99,7 @@ const MOCK_PAYLOAD: ChannelPayload = {
         "https://images.unsplash.com/photo-1553481187-be93c21490a9?auto=format&fit=crop&w=600&q=80",
       publishedAt: new Date(Date.now() - 3600000 * 24 * 7).toISOString(), // 7 days ago
       url: "https://www.youtube.com/watch?v=mock-vid4",
+      views: "38.9K",
     },
     {
       id: "vid5",
@@ -103,6 +108,7 @@ const MOCK_PAYLOAD: ChannelPayload = {
         "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=600&q=80",
       publishedAt: new Date(Date.now() - 3600000 * 24 * 12).toISOString(), // 12 days ago
       url: "https://www.youtube.com/watch?v=mock-vid5",
+      views: "52.4K",
     },
     {
       id: "vid6",
@@ -111,6 +117,7 @@ const MOCK_PAYLOAD: ChannelPayload = {
         "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?auto=format&fit=crop&w=600&q=80",
       publishedAt: new Date(Date.now() - 3600000 * 24 * 20).toISOString(), // 20 days ago
       url: "https://www.youtube.com/watch?v=mock-vid6",
+      views: "29.1K",
     },
   ],
   live: {
@@ -171,7 +178,7 @@ export const getChannel = createServerFn({ method: "GET" }).handler(
       // 2. Latest uploads
       const plUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=9&playlistId=${channel.uploadsPlaylistId}&key=${key}`;
       const plJson = await ytFetch(plUrl, key);
-      const videos: VideoItem[] = (plJson.items || []).map((it: YTPlaylistItem) => {
+      let videos: VideoItem[] = (plJson.items || []).map((it: YTPlaylistItem) => {
         const vid = it.snippet.resourceId.videoId;
         const t = it.snippet.thumbnails;
         return {
@@ -182,6 +189,29 @@ export const getChannel = createServerFn({ method: "GET" }).handler(
           url: `https://www.youtube.com/watch?v=${vid}`,
         };
       });
+
+      // 2.1 Fetch view counts for videos if available
+      try {
+        const videoIds = videos.map((v) => v.id).filter(Boolean);
+        if (videoIds.length > 0) {
+          const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds.join(",")}&key=${key}`;
+          const statsJson = await ytFetch(statsUrl, key);
+          const statsMap = new Map<string, string>();
+          (statsJson.items || []).forEach(
+            (item: { id: string; statistics?: { viewCount?: string } }) => {
+              if (item.statistics?.viewCount) {
+                statsMap.set(item.id, item.statistics.viewCount);
+              }
+            },
+          );
+          videos = videos.map((v) => ({
+            ...v,
+            views: statsMap.get(v.id) || v.views,
+          }));
+        }
+      } catch (statsErr) {
+        console.warn("Could not fetch individual video statistics:", statsErr);
+      }
 
       // 3. Check for active live stream
       let live: LiveStream | null = null;

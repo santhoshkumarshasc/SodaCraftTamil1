@@ -18,7 +18,11 @@ import {
   Moon,
   Search,
   Heart,
+  Eye,
+  Lock,
 } from "lucide-react";
+import { useAdminConfig } from "@/lib/admin-config";
+import { AdminSecretModal } from "@/components/AdminSecretModal";
 
 const channelQueryOptions = queryOptions<ChannelPayload>({
   queryKey: ["yt-channel"],
@@ -125,6 +129,19 @@ const SOCIALS = [
 function formatNumber(n: string | number) {
   const num = typeof n === "string" ? parseInt(n, 10) : n;
   if (isNaN(num)) return n.toString();
+  return num.toLocaleString();
+}
+
+function formatViews(views?: string | number): string {
+  if (!views) return "";
+  const num = typeof views === "number" ? views : parseInt(views.toString().replace(/,/g, ""), 10);
+  if (isNaN(num)) return views.toString();
+  if (num >= 1_000_000) {
+    return (num / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  }
+  if (num >= 1_000) {
+    return (num / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  }
   return num.toLocaleString();
 }
 
@@ -276,6 +293,7 @@ function AnimatedCounter({
         }
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="inline-block select-none"
+        suppressHydrationWarning
       >
         {displayValue.toLocaleString()}
       </motion.span>
@@ -300,6 +318,8 @@ function AnimatedCounter({
 function Home() {
   const [mounted, setMounted] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const { config } = useAdminConfig();
 
   useEffect(() => {
     setMounted(true);
@@ -307,6 +327,17 @@ function Home() {
     if (savedTheme === "light" || savedTheme === "dark") {
       setTheme(savedTheme);
     }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.shiftKey && e.key.toLowerCase() === "a") ||
+        (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "s")
+      ) {
+        setIsAdminOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const toggleTheme = () => {
@@ -317,7 +348,11 @@ function Home() {
 
   const isLight = theme === "light";
 
-  const { data } = useSuspenseQuery(channelQueryOptions);
+  const loaderData = Route.useLoaderData();
+  const { data } = useSuspenseQuery({
+    ...channelQueryOptions,
+    initialData: loaderData,
+  });
   const { channel, videos, live, fetchedAt } = data;
 
   const schemaMarkup = {
@@ -634,25 +669,42 @@ function Home() {
                   Watch
                 </a>
               )}
-              <Link
-                to="/support"
-                className={`inline-flex items-center gap-1 sm:gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold backdrop-blur transition sm:px-4 sm:py-2 sm:text-sm border ${
-                  isLight
-                    ? "bg-red-50 hover:bg-red-100 border-red-200 text-[oklch(0.65_0.24_25)]"
-                    : "bg-[oklch(0.65_0.24_25)]/15 hover:bg-[oklch(0.65_0.24_25)]/25 border-[oklch(0.65_0.24_25)]/30 text-[oklch(0.75_0.22_25)]"
-                }`}
-              >
-                <Heart className="h-3.5 w-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
-                <span>Support</span>
-              </Link>
+              {config.supportButtonEnabled && (
+                <Link
+                  to="/support"
+                  className={`inline-flex items-center gap-1 sm:gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold backdrop-blur transition sm:px-4 sm:py-2 sm:text-sm border ${
+                    isLight
+                      ? "bg-red-50 hover:bg-red-100 border-red-200 text-[oklch(0.65_0.24_25)]"
+                      : "bg-[oklch(0.65_0.24_25)]/15 hover:bg-[oklch(0.65_0.24_25)]/25 border-[oklch(0.65_0.24_25)]/30 text-[oklch(0.75_0.22_25)]"
+                  }`}
+                >
+                  <Heart className="h-3.5 w-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
+                  <span>Support</span>
+                </Link>
+              )}
               <a
-                href="https://www.youtube.com/@SodaCraftTamil?sub_confirmation=1"
+                href={
+                  config.socialLinks.youtubeMain ||
+                  "https://www.youtube.com/@SodaCraftTamil?sub_confirmation=1"
+                }
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-full bg-[oklch(0.65_0.24_25)] px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-red-500/20 transition hover:bg-[oklch(0.7_0.24_25)] sm:px-5 sm:py-2 sm:text-sm"
               >
                 Subscribe
               </a>
+              <button
+                onClick={() => setIsAdminOpen(true)}
+                className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-all duration-300 cursor-pointer border ${
+                  isLight
+                    ? "bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-sm"
+                    : "bg-white/10 hover:bg-white/20 border-white/5 text-white/80"
+                }`}
+                title="Admin Secret Code Dashboard (9629)"
+                aria-label="Admin Dashboard"
+              >
+                <Lock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
+              </button>
             </div>
           </nav>
 
@@ -841,6 +893,13 @@ function Home() {
                     </svg>
                   </div>
                 </div>
+                {/* Views count badge on thumbnail */}
+                {v.views && (
+                  <div className="absolute bottom-2 right-2 rounded-md bg-black/80 backdrop-blur-xs px-2 py-0.5 text-[11px] font-semibold text-white flex items-center gap-1 shadow-md">
+                    <Eye className="w-3 h-3 text-red-400" />
+                    <span suppressHydrationWarning>{formatViews(v.views)}</span>
+                  </div>
+                )}
               </div>
               <div className="p-4">
                 <h3
@@ -850,9 +909,20 @@ function Home() {
                 >
                   {v.title}
                 </h3>
-                <p className={`mt-2 text-xs ${isLight ? "text-slate-500" : "text-white/50"}`}>
-                  {mounted ? timeAgo(v.publishedAt, now) : "recently"}
-                </p>
+                <div
+                  className={`mt-2 flex items-center gap-1.5 text-xs ${isLight ? "text-slate-500" : "text-white/50"}`}
+                >
+                  {v.views && (
+                    <>
+                      <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                        <Eye className="w-3.5 h-3.5 text-red-500" />
+                        <span suppressHydrationWarning>{formatViews(v.views)} views</span>
+                      </span>
+                      <span>•</span>
+                    </>
+                  )}
+                  <span>{mounted ? timeAgo(v.publishedAt, now) : "recently"}</span>
+                </div>
               </div>
             </a>
           ))}
@@ -1186,7 +1256,39 @@ function Home() {
             Follow across all platforms for daily updates
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-2.5">
-            {SOCIALS.map((s) => {
+            {[
+              {
+                label: "SodaPuttiGamer",
+                href: config.socialLinks.youtubePutti || "https://www.youtube.com/@SodaPuttiGamer",
+                icon: "M23.5 6.2a3 3 0 0 0-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 0 0 2.1-2.1c.3-1.9.5-3.8.5-5.8 0-2-.2-3.9-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z",
+              },
+              {
+                label: "SodaCraftTamil",
+                href: config.socialLinks.youtubeMain || "https://www.youtube.com/@SodaCraftTamil",
+                icon: "M23.5 6.2a3 3 0 0 0-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 0 0 2.1-2.1c.3-1.9.5-3.8.5-5.8 0-2-.2-3.9-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z",
+              },
+              {
+                label: "SodaCraftTamil 2.O",
+                href: config.socialLinks.youtube2 || "https://www.youtube.com/@SodaCraftTamil2.0",
+                icon: "M23.5 6.2a3 3 0 0 0-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 0 0 .5 6.2 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 0 0 2.1-2.1c.3-1.9.5-3.8.5-5.8 0-2-.2-3.9-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z",
+              },
+              {
+                label: "Instagram",
+                href: config.socialLinks.instagram || "https://www.instagram.com/sodacrafttamil",
+                icon: "M12 2.2c3.2 0 3.6 0 4.8.1 1.2.1 1.9.2 2.4.4.6.2 1 .5 1.5 1s.8.9 1 1.5c.2.5.4 1.2.4 2.4.1 1.2.1 1.6.1 4.8s0 3.6-.1 4.8c-.1 1.2-.2 1.9-.4 2.4-.2.6-.5 1-1 1.5s-.9.8-1.5 1c-.5.2-1.2.4-2.4.4-1.2.1-1.6.1-4.8.1s-3.6 0-4.8-.1c-1.2-.1-1.9-.2-2.4-.4-.6-.2-1-.5-1.5-1s-.8-.9-1-1.5c-.2-.5-.4-1.2-.4-2.4C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.8c.1-1.2.2-1.9.4-2.4.2-.6.5-1 1-1.5s.9-.8 1.5-1c.5-.2 1.2-.4 2.4-.4C8.4 2.2 8.8 2.2 12 2.2zm0 5.6a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4zm5.4-.6a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM12 9.8a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4z",
+              },
+              {
+                label: "Discord",
+                href: config.socialLinks.discord || "https://discord.com/invite/XRUkfZnpfv",
+                icon: "M20.3 4.4A19 19 0 0 0 15.7 3l-.2.4a17.5 17.5 0 0 0-7 0L8.3 3a19 19 0 0 0-4.6 1.4A20 20 0 0 0 .3 17.6a19 19 0 0 0 5.8 2.9l.5-.6a13 13 0 0 1-2-.9l.2-.1a13.6 13.6 0 0 0 13.4 0l.2.1a13 13 0 0 1-2 .9l.5.6a19 19 0 0 0 5.8-2.9 20 20 0 0 0-3.4-13.2zM8.5 15.3a2.3 2.3 0 0 1 0-4.5 2.3 2.3 0 0 1 0 4.5zm7 0a2.3 2.3 0 0 1 0-4.5 2.3 2.3 0 0 1 0 4.5z",
+              },
+              {
+                label: "WhatsApp Channel",
+                href:
+                  config.socialLinks.whatsappChannel || "https://whatsapp.com/channel/sodacraft",
+                icon: "M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.204 8.204 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.24 8.24-1.44 0-2.85-.38-4.08-1.1l-.29-.17-3.03.79.81-2.95-.19-.3a8.216 8.216 0 0 1-1.26-4.33c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.64c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.07-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.43s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.86.84-.86 2.05s.88 2.38 1 2.54c.12.17 1.73 2.64 4.2 3.7.59.25 1.05.41 1.41.52.59.19 1.13.16 1.56.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.22-.17-.47-.29z",
+              },
+            ].map((s) => {
               const isBlank = !s.href || s.href.trim() === "" || s.href === "#";
               return (
                 <a
@@ -1224,40 +1326,42 @@ function Home() {
         </div>
 
         {/* SUPPORT THE CHANNEL PROMO BANNER */}
-        <div
-          className={`mt-16 rounded-3xl p-6 sm:p-8 border shadow-xl relative overflow-hidden transition ${
-            isLight
-              ? "bg-gradient-to-br from-red-50 via-white to-orange-50 border-red-200 text-slate-900"
-              : "bg-gradient-to-br from-red-950/40 via-[oklch(0.12_0.03_260)] to-orange-950/30 border-red-500/20 text-white"
-          }`}
-        >
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
-            <div className="max-w-xl">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[oklch(0.65_0.24_25)]/10 text-[oklch(0.75_0.22_25)] border border-[oklch(0.65_0.24_25)]/20 mb-3">
-                <Heart className="w-3.5 h-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
-                <span>Support the Streamer</span>
+        {config.supportButtonEnabled && (
+          <div
+            className={`mt-16 rounded-3xl p-6 sm:p-8 border shadow-xl relative overflow-hidden transition ${
+              isLight
+                ? "bg-gradient-to-br from-red-50 via-white to-orange-50 border-red-200 text-slate-900"
+                : "bg-gradient-to-br from-red-950/40 via-[oklch(0.12_0.03_260)] to-orange-950/30 border-red-500/20 text-white"
+            }`}
+          >
+            <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+              <div className="max-w-xl">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[oklch(0.65_0.24_25)]/10 text-[oklch(0.75_0.22_25)] border border-[oklch(0.65_0.24_25)]/20 mb-3">
+                  <Heart className="w-3.5 h-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
+                  <span>Support the Streamer</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black tracking-tight">
+                  Support via Google Pay & UPI
+                </h3>
+                <p
+                  className={`mt-2 text-xs sm:text-sm ${
+                    isLight ? "text-slate-600" : "text-slate-300"
+                  }`}
+                >
+                  Contribute via UPI QR code, help fund our Minecraft SMP server & equipment, and
+                  get your name automatically added to our live supporters board!
+                </p>
               </div>
-              <h3 className="text-xl sm:text-2xl font-black tracking-tight">
-                Support via Google Pay & UPI
-              </h3>
-              <p
-                className={`mt-2 text-xs sm:text-sm ${
-                  isLight ? "text-slate-600" : "text-slate-300"
-                }`}
+              <Link
+                to="/support"
+                className="shrink-0 inline-flex items-center gap-2 rounded-2xl bg-[oklch(0.65_0.24_25)] hover:bg-[oklch(0.7_0.24_25)] px-6 py-3.5 text-sm font-extrabold text-white shadow-xl shadow-red-500/25 transition transform hover:scale-105 active:scale-95"
               >
-                Contribute via UPI QR code, help fund our Minecraft SMP server & equipment, and get
-                your name automatically added to our live supporters board!
-              </p>
+                <Heart className="w-4 h-4 fill-white" />
+                <span>Go to Support Page</span>
+              </Link>
             </div>
-            <Link
-              to="/support"
-              className="shrink-0 inline-flex items-center gap-2 rounded-2xl bg-[oklch(0.65_0.24_25)] hover:bg-[oklch(0.7_0.24_25)] px-6 py-3.5 text-sm font-extrabold text-white shadow-xl shadow-red-500/25 transition transform hover:scale-105 active:scale-95"
-            >
-              <Heart className="w-4 h-4 fill-white" />
-              <span>Go to Support Page</span>
-            </Link>
           </div>
-        </div>
+        )}
 
         {/* MARQUEE FOOTER BAND */}
         <div
@@ -1311,16 +1415,32 @@ function Home() {
           }`}
         >
           <span>© {new Date().getFullYear()} SodaCraftTamil. All rights reserved.</span>
+          {config.supportButtonEnabled && (
+            <>
+              <span className="hidden sm:inline">•</span>
+              <Link
+                to="/support"
+                className="hover:underline text-[oklch(0.75_0.22_25)] font-semibold inline-flex items-center gap-1"
+              >
+                <Heart className="w-3.5 h-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
+                <span>Support via GPay & UPI</span>
+              </Link>
+            </>
+          )}
           <span className="hidden sm:inline">•</span>
-          <Link
-            to="/support"
-            className="hover:underline text-[oklch(0.75_0.22_25)] font-semibold inline-flex items-center gap-1"
+          <button
+            onClick={() => setIsAdminOpen(true)}
+            className="hover:underline text-amber-400 font-semibold inline-flex items-center gap-1 cursor-pointer"
+            title="Open Admin Dashboard (Code: 9629)"
           >
-            <Heart className="w-3.5 h-3.5 fill-current text-[oklch(0.65_0.24_25)]" />
-            <span>Support via GPay & UPI</span>
-          </Link>
+            <Lock className="w-3.5 h-3.5" />
+            <span>Admin Code</span>
+          </button>
         </footer>
       </section>
+
+      {/* Admin Secret Code Modal */}
+      <AdminSecretModal isOpen={isAdminOpen} onClose={() => setIsAdminOpen(false)} />
     </div>
   );
 }
