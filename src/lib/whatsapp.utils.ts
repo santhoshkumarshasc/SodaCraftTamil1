@@ -66,9 +66,9 @@ export function downloadReceiptTxt(
 ): void {
   if (typeof window === "undefined") return;
   const rawMessage = formatWhatsAppMessage(supporter, upiId, payeeName);
-  // Strip formatting asterisks for pure clean text file
+  // Strip formatting asterisks for pure clean text file, and prepend UTF-8 BOM (\uFEFF) for flawless cross-platform encoding
   const cleanText = rawMessage.replace(/\*/g, "");
-  const blob = new Blob([cleanText], { type: "text/plain;charset=utf-8" });
+  const blob = new Blob(["\uFEFF" + cleanText], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   const receiptNo = supporter.receiptNumber || `SCT-REC-${supporter.id.slice(-6).toUpperCase()}`;

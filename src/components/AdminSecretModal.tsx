@@ -99,7 +99,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
   const [newLinkHref, setNewLinkHref] = useState("");
   const [newPresetAmount, setNewPresetAmount] = useState("");
   const [newPasscode, setNewPasscode] = useState("");
-  const [urlTokenInput, setUrlTokenInput] = useState(config.urlToken || "custom");
+  const [urlTokenInput, setUrlTokenInput] = useState(config.urlToken || "SodaCraftTamil");
 
   const fetchRealtimeData = useCallback(
     async (tokenToUse?: string) => {
@@ -123,7 +123,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
         const dbConfig = await getDbConfigFn();
         if (dbConfig) {
           setConfig(dbConfig);
-          setUrlTokenInput(dbConfig.urlToken || "custom");
+          setUrlTokenInput(dbConfig.urlToken || "SodaCraftTamil");
           saveAdminConfig(dbConfig);
         }
       } catch (err) {
@@ -233,7 +233,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
   };
 
   const handleUpdateUrlToken = async () => {
-    const clean = urlTokenInput.trim() || "custom";
+    const clean = urlTokenInput.trim() || "SodaCraftTamil";
     const updated = { ...config, urlToken: clean };
     setConfig(updated);
     if (sessionToken) {
@@ -260,7 +260,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
     try {
       const mergedConfig = {
         ...config,
-        urlToken: urlTokenInput.trim() || config.urlToken || "custom",
+        urlToken: urlTokenInput.trim() || config.urlToken || "SodaCraftTamil",
       };
       if (sessionToken) {
         await saveDbConfigFn({
@@ -533,7 +533,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
 
             <div className="flex items-center gap-2">
               <a
-                href={`/admin?token=${encodeURIComponent(urlTokenInput || config.urlToken || "custom")}`}
+                href={`/admin?token=${encodeURIComponent(urlTokenInput || config.urlToken || "SodaCraftTamil")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white/90 transition flex items-center gap-1.5 cursor-pointer"
@@ -1677,14 +1677,13 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <span>Secret URL Access Token (?token=...)</span>
                         </h4>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono">
-                          ?token={urlTokenInput || "custom"}
+                          ?token={urlTokenInput || "SodaCraftTamil"}
                         </span>
                       </div>
 
                       <p className="text-xs text-white/80 leading-relaxed">
-                        Change the URL token used to access the admin portal. You can use any custom
-                        word like <code className="text-emerald-400 font-mono">custom</code> or your
-                        own secret phrase.
+                        Change the URL token used to access the admin portal. Default is{" "}
+                        <code className="text-emerald-400 font-mono">SodaCraftTamil</code>.
                       </p>
 
                       <div className="space-y-2">
@@ -1704,7 +1703,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                               data-lpignore="true"
                               data-1p-ignore="true"
                               onChange={(e) => setUrlTokenInput(e.target.value)}
-                              placeholder="custom"
+                              placeholder="SodaCraftTamil"
                               className="w-full pl-18 pr-4 py-2 rounded-xl text-sm bg-black/40 border border-white/15 text-white font-mono outline-none focus:border-amber-400"
                             />
                           </div>
@@ -1728,14 +1727,14 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                         <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs">
                           <div className="truncate font-mono text-emerald-400">
                             https://sodacrafttamil.vercel.app/admin?token=
-                            {urlTokenInput || "custom"}
+                            {urlTokenInput || "SodaCraftTamil"}
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <button
                               type="button"
                               onClick={() => {
                                 navigator.clipboard.writeText(
-                                  `${window.location.origin}/admin?token=${urlTokenInput || "custom"}`,
+                                  `${window.location.origin}/admin?token=${urlTokenInput || "SodaCraftTamil"}`,
                                 );
                                 toast.success("Copied separate tab Admin URL!");
                               }}
@@ -1745,7 +1744,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                               <Copy className="w-3.5 h-3.5" />
                             </button>
                             <a
-                              href={`/admin?token=${encodeURIComponent(urlTokenInput || "custom")}`}
+                              href={`/admin?token=${encodeURIComponent(urlTokenInput || "SodaCraftTamil")}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition flex items-center gap-1 font-bold text-[11px]"
@@ -1760,13 +1759,13 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                         {/* Home Modal URL */}
                         <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs">
                           <div className="truncate font-mono text-white/70">
-                            https://sodacrafttamil.vercel.app/?token={urlTokenInput || "custom"}
+                            https://sodacrafttamil.vercel.app/?token={urlTokenInput || "SodaCraftTamil"}
                           </div>
                           <button
                             type="button"
                             onClick={() => {
                               navigator.clipboard.writeText(
-                                `${window.location.origin}/?token=${urlTokenInput || "custom"}`,
+                                `${window.location.origin}/?token=${urlTokenInput || "SodaCraftTamil"}`,
                               );
                               toast.success("Copied homepage secret token URL!");
                             }}
@@ -1841,7 +1840,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           </h4>
                         </div>
                         <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300">
-                          Token: {urlTokenInput || "custom"}
+                          Token: {urlTokenInput || "SodaCraftTamil"}
                         </span>
                       </div>
 
@@ -1859,14 +1858,14 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <div className="flex items-center justify-between gap-2">
                             <code className="text-xs font-mono text-emerald-400 truncate">
                               {typeof window !== "undefined" ? window.location.origin : ""}
-                              /admin?token={urlTokenInput || "custom"}
+                              /admin?token={urlTokenInput || "SodaCraftTamil"}
                             </code>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => {
                                   navigator.clipboard.writeText(
-                                    `${window.location.origin}/admin?token=${urlTokenInput || "custom"}`,
+                                    `${window.location.origin}/admin?token=${urlTokenInput || "SodaCraftTamil"}`,
                                   );
                                   toast.success("Copied Dedicated Admin URL!");
                                 }}
@@ -1876,7 +1875,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                                 <Copy className="w-3.5 h-3.5" />
                               </button>
                               <a
-                                href={`/admin?token=${encodeURIComponent(urlTokenInput || "custom")}`}
+                                href={`/admin?token=${encodeURIComponent(urlTokenInput || "SodaCraftTamil")}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition flex items-center gap-1 font-bold text-[11px]"
@@ -1902,14 +1901,14 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <div className="flex items-center justify-between gap-2">
                             <code className="text-xs font-mono text-white/80 truncate">
                               {typeof window !== "undefined" ? window.location.origin : ""}/?token=
-                              {urlTokenInput || "custom"}
+                              {urlTokenInput || "SodaCraftTamil"}
                             </code>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => {
                                   navigator.clipboard.writeText(
-                                    `${window.location.origin}/?token=${urlTokenInput || "custom"}`,
+                                    `${window.location.origin}/?token=${urlTokenInput || "SodaCraftTamil"}`,
                                   );
                                   toast.success("Copied Homepage Secret Trigger URL!");
                                 }}
@@ -1919,7 +1918,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                                 <Copy className="w-3.5 h-3.5" />
                               </button>
                               <a
-                                href={`/?token=${encodeURIComponent(urlTokenInput || "custom")}`}
+                                href={`/?token=${encodeURIComponent(urlTokenInput || "SodaCraftTamil")}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition flex items-center gap-1 font-bold text-[11px]"
@@ -1945,14 +1944,14 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           <div className="flex items-center justify-between gap-2">
                             <code className="text-xs font-mono text-blue-300 truncate">
                               {typeof window !== "undefined" ? window.location.origin : ""}
-                              /support?token={urlTokenInput || "custom"}
+                              /support?token={urlTokenInput || "SodaCraftTamil"}
                             </code>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => {
                                   navigator.clipboard.writeText(
-                                    `${window.location.origin}/support?token=${urlTokenInput || "custom"}`,
+                                    `${window.location.origin}/support?token=${urlTokenInput || "SodaCraftTamil"}`,
                                   );
                                   toast.success("Copied Support Page Secret Trigger URL!");
                                 }}
@@ -1962,7 +1961,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                                 <Copy className="w-3.5 h-3.5" />
                               </button>
                               <a
-                                href={`/support?token=${encodeURIComponent(urlTokenInput || "custom")}`}
+                                href={`/support?token=${encodeURIComponent(urlTokenInput || "SodaCraftTamil")}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 transition flex items-center gap-1 font-bold text-[11px]"
@@ -2149,12 +2148,12 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                           </span>
                           <div className="flex items-center justify-between">
                             <code className="text-xs font-mono font-bold text-purple-400">
-                              {config.urlToken || "custom"}
+                              {config.urlToken || "SodaCraftTamil"}
                             </code>
                             <button
                               type="button"
                               onClick={() => {
-                                navigator.clipboard.writeText(config.urlToken || "custom");
+                                navigator.clipboard.writeText(config.urlToken || "SodaCraftTamil");
                                 toast.success("Copied URL token!");
                               }}
                               className="text-[11px] text-purple-400 hover:underline cursor-pointer"

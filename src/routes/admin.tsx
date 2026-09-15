@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ import {
   ExternalLink,
   RotateCcw,
   AlertTriangle,
+  ShieldAlert,
   Sliders,
   Copy,
   ArrowLeft,
@@ -57,6 +58,12 @@ export const Route = createFileRoute("/admin")({
   validateSearch: (search: Record<string, unknown>) => ({
     token: typeof search.token === "string" ? search.token : undefined,
   }),
+  beforeLoad: ({ search }) => {
+    const raw = typeof search?.token === "string" ? search.token.trim().toLowerCase() : "";
+    if (raw !== "sodacrafttamil") {
+      throw notFound();
+    }
+  },
   head: () => ({
     meta: [
       { title: "SodaCraft Tamil - Admin Dashboard" },
@@ -68,11 +75,27 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [config, setConfig] = useState<AdminSiteConfig>(getAdminConfig());
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [currentAccount, setCurrentAccount] = useState<AdminAccount | null>(null);
+
+  // Check whether URL contains a valid token required to open the admin page
+  const currentToken =
+    search?.token ||
+    (typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("token")
+      : undefined);
+
+  const cleanToken = (currentToken || "").trim().toLowerCase();
+  const configuredToken = (config.urlToken || "SodaCraftTamil").trim().toLowerCase();
+
+  // Strict URL token access: Must be provided via ?token=SodaCraftTamil
+  const hasValidToken =
+    Boolean(cleanToken) &&
+    (cleanToken === "sodacrafttamil" || cleanToken === configuredToken);
 
   // Login form state
   const [usernameInput, setUsernameInput] = useState("");
@@ -105,7 +128,7 @@ function AdminPage() {
   const [newLinkHref, setNewLinkHref] = useState("");
   const [newPresetAmount, setNewPresetAmount] = useState("");
   const [newPasscode, setNewPasscode] = useState("");
-  const [urlTokenInput, setUrlTokenInput] = useState(config.urlToken || "custom");
+  const [urlTokenInput, setUrlTokenInput] = useState(config.urlToken || "SodaCraftTamil");
 
   // Load saved theme
   useEffect(() => {
@@ -126,6 +149,7 @@ function AdminPage() {
   // Real-time data fetcher
   const fetchRealtimeData = useCallback(
     async (tokenToUse?: string) => {
+      if (!hasValidToken) return;
       const token = tokenToUse || sessionToken;
       if (!token) return;
       setIsRefreshing(true);
@@ -143,7 +167,7 @@ function AdminPage() {
         const dbConfig = await getDbConfigFn();
         if (dbConfig) {
           setConfig(dbConfig);
-          setUrlTokenInput(dbConfig.urlToken || "custom");
+          setUrlTokenInput(dbConfig.urlToken || "SodaCraftTamil");
           saveAdminConfig(dbConfig);
         }
       } catch (err) {
@@ -152,12 +176,16 @@ function AdminPage() {
         setIsRefreshing(false);
       }
     },
-    [sessionToken],
+    [sessionToken, hasValidToken],
   );
 
-  // Auto-authenticate if session token exists in sessionStorage or valid URL token matches
+  // Auto-authenticate only if valid URL token is present and session token exists
   useEffect(() => {
     async function initSession() {
+      if (!hasValidToken) {
+        return;
+      }
+
       const storedToken = sessionStorage.getItem("sodacraft_admin_token");
       const storedAcc = sessionStorage.getItem("sodacraft_admin_account");
 
@@ -178,7 +206,7 @@ function AdminPage() {
           const dbConfig = await getDbConfigFn();
           if (dbConfig) {
             setConfig(dbConfig);
-            setUrlTokenInput(dbConfig.urlToken || "custom");
+            setUrlTokenInput(dbConfig.urlToken || "SodaCraftTamil");
           }
         } catch {
           // ignore
@@ -194,7 +222,7 @@ function AdminPage() {
       }
     }
     initSession();
-  }, [fetchRealtimeData]);
+  }, [fetchRealtimeData, hasValidToken]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -311,9 +339,13 @@ function AdminPage() {
   };
 
   const handleUpdateUrlToken = async () => {
-    const clean = urlTokenInput.trim() || "custom";
+    const clean = urlTokenInput.trim() || "SodaCraftTamil";
     const updated = { ...config, urlToken: clean };
     setConfig(updated);
+    navigate({
+      search: { token: clean },
+      replace: true,
+    });
     if (sessionToken) {
       try {
         await saveDbConfigFn({
@@ -336,10 +368,15 @@ function AdminPage() {
 
   const handleSaveAll = async () => {
     try {
+      const cleanToken = urlTokenInput.trim() || config.urlToken || "SodaCraftTamil";
       const mergedConfig = {
         ...config,
-        urlToken: urlTokenInput.trim() || config.urlToken || "custom",
+        urlToken: cleanToken,
       };
+      navigate({
+        search: { token: cleanToken },
+        replace: true,
+      });
       if (sessionToken) {
         await saveDbConfigFn({
           data: {
@@ -498,6 +535,11 @@ function AdminPage() {
   };
 
   const totalRaised = payments.reduce((sum, p) => sum + p.amount, 0);
+
+  // If user visits /admin without ?token=SodaCraftTamil, don't open anything
+  if (!hasValidToken) {
+    return null;
+  }
 
   return (
     <div
@@ -1603,14 +1645,14 @@ function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Homepage Secret Token Modal Link */}
+                      {/* Homepage Secret Token Redirect to Admin Page */}
                       <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold text-white/90">
-                            Homepage Secret Popup Trigger Link
+                            Homepage Secret URL (Opens in /admin)
                           </span>
                           <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
-                            In-Page Modal
+                            Auto-Opens /admin
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-2">
@@ -1625,7 +1667,7 @@ function AdminPage() {
                                 navigator.clipboard.writeText(
                                   `${window.location.origin}/?token=${urlTokenInput || "custom"}`,
                                 );
-                                toast.success("Copied Homepage Secret Trigger URL!");
+                                toast.success("Copied Homepage Secret URL!");
                               }}
                               className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 transition cursor-pointer"
                               title="Copy URL"

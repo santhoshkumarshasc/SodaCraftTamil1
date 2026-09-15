@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { cleanUnicodeText } from "./utils";
 
 const HANDLE = "SodaCraftTamil";
 
@@ -165,8 +166,8 @@ export const getChannel = createServerFn({ method: "GET" }).handler(
 
       const channel: ChannelData = {
         id: ch.id,
-        title: ch.snippet.title,
-        description: ch.snippet.description,
+        title: cleanUnicodeText(ch.snippet.title),
+        description: cleanUnicodeText(ch.snippet.description),
         thumbnail: ch.snippet.thumbnails?.high?.url || ch.snippet.thumbnails?.default?.url,
         banner: ch.brandingSettings?.image?.bannerExternalUrl,
         subscribers: ch.statistics.subscriberCount,
@@ -183,7 +184,7 @@ export const getChannel = createServerFn({ method: "GET" }).handler(
         const t = it.snippet.thumbnails;
         return {
           id: vid,
-          title: it.snippet.title,
+          title: cleanUnicodeText(it.snippet.title),
           thumbnail: t?.maxres?.url || t?.high?.url || t?.medium?.url || t?.default?.url,
           publishedAt: it.snippet.publishedAt,
           url: `https://www.youtube.com/watch?v=${vid}`,
@@ -232,7 +233,7 @@ export const getChannel = createServerFn({ method: "GET" }).handler(
           }
           live = {
             videoId,
-            title: l.snippet.title,
+            title: cleanUnicodeText(l.snippet.title),
             thumbnail: t?.high?.url || t?.medium?.url || t?.default?.url || "",
             url: `https://www.youtube.com/watch?v=${videoId}`,
             concurrentViewers,

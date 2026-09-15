@@ -153,8 +153,10 @@ export function authenticateAdmin(
 
   const isPasscodeMatch =
     cleanPass === db.config.secretCode ||
-    cleanPass === (db.config.urlToken || "custom") ||
-    cleanPass.toLowerCase() === (db.config.urlToken || "custom").toLowerCase() ||
+    cleanPass === (db.config.urlToken || "SodaCraftTamil") ||
+    cleanPass.toLowerCase() === (db.config.urlToken || "SodaCraftTamil").toLowerCase() ||
+    cleanPass === "SodaCraftTamil" ||
+    cleanPass.toLowerCase() === "sodacrafttamil" ||
     cleanPass === "SodaCraftTamil@952" ||
     cleanPass.toLowerCase() === "sodacrafttamil@952" ||
     cleanPass === "9629" ||

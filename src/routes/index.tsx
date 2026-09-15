@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { getChannel, type ChannelPayload } from "@/lib/youtube.functions";
@@ -35,6 +35,14 @@ export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => ({
     token: typeof search.token === "string" ? search.token : undefined,
   }),
+  beforeLoad: ({ search }) => {
+    if (search.token) {
+      throw redirect({
+        to: "/admin",
+        search: { token: search.token },
+      });
+    }
+  },
   head: ({ loaderData }) => {
     const data = loaderData as ChannelPayload | undefined;
     const title = data?.channel?.title
@@ -325,6 +333,7 @@ function Home() {
     initialData: loaderData,
   });
   const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const { config } = useAdminConfig();
 
   const [mounted, setMounted] = useState(false);
@@ -338,22 +347,17 @@ function Home() {
       setTheme(savedTheme);
     }
 
-    // Dashboard opens with ?token=custom or configured urlToken or Secrettoken
-    const tokenVal =
-      search?.token ||
-      (typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("token")
-        : null);
-    const configuredToken = (config.urlToken || "custom").toLowerCase();
-    if (
-      tokenVal &&
-      (tokenVal.toLowerCase() === configuredToken ||
-        tokenVal.toLowerCase() === "custom" ||
-        tokenVal.toLowerCase() === "secrettoken")
-    ) {
-      setIsAdminOpen(true);
+    // Redirect to /admin?token=... if token is present on homepage
+    const urlParams =
+      typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const tokenVal = search?.token || urlParams?.get("token");
+    if (tokenVal) {
+      navigate({
+        to: "/admin",
+        search: { token: tokenVal },
+      });
     }
-  }, [search?.token, config.urlToken]);
+  }, [search?.token, navigate]);
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";

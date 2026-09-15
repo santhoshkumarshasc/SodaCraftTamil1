@@ -120,18 +120,16 @@ function SupportPage() {
       setTheme(savedTheme);
     }
 
-    // Dashboard opens with ?token=custom or configured urlToken or Secrettoken
+    // Dashboard opens with ?token=SodaCraftTamil or configured urlToken
     const tokenVal =
       search?.token ||
       (typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("token")
         : null);
-    const configuredToken = (config.urlToken || "custom").toLowerCase();
+    const configuredToken = (config.urlToken || "SodaCraftTamil").toLowerCase();
     if (
       tokenVal &&
-      (tokenVal.toLowerCase() === configuredToken ||
-        tokenVal.toLowerCase() === "custom" ||
-        tokenVal.toLowerCase() === "secrettoken")
+      (tokenVal.toLowerCase() === "sodacrafttamil" || tokenVal.toLowerCase() === configuredToken)
     ) {
       setIsAdminOpen(true);
     }

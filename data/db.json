@@ -6,7 +6,8 @@
       "email": "SodaCraftads@gmail.com",
       "passwordHash": "9b4edf5b89b944474c237becc097d31e2045562c4fd9147fee678ec73faa39bb",
       "role": "superadmin",
-      "createdAt": "2026-09-15T02:00:00.000Z"
+      "createdAt": "2026-09-15T02:00:00.000Z",
+      "lastLoginAt": "2026-09-15T04:11:34.348Z"
     }
   ],
   "config": {
@@ -65,7 +66,13 @@
     "liveStreamUrl": "",
     "subscribeUrl": "https://www.youtube.com/@SodaCraftTamil?sub_confirmation=1",
     "latestVideosUrl": "https://www.youtube.com/@SodaCraftTamil/videos",
-    "presetAmounts": [50, 100, 250, 500, 1000],
+    "presetAmounts": [
+      50,
+      100,
+      250,
+      500,
+      1000
+    ],
     "monthlyGoal": 15000,
     "goalTitle": "Monthly SMP Server & Stream Fund",
     "upiId": "santhoshkumarshasc@oksbi",
@@ -77,9 +84,20 @@
     "razorpayKeyId": "rzp_live_Tc8MHDDnSr3cwl",
     "razorpayKeySecret": "42rJlLTF0hJc1exM4t7JOLGY",
     "secretCode": "9629",
-    "urlToken": "custom"
+    "urlToken": "SodaCraftTamil"
   },
   "supporters": [],
-  "sessions": [],
-  "lastUpdated": 1789437600000
+  "sessions": [
+    {
+      "token": "adm_token_1789445455121_67bf2fb96278f569a8a50b7b8c79c5bb",
+      "accountId": "admin-sodacraft-primary",
+      "expiresAt": 1790050255122
+    },
+    {
+      "token": "adm_token_1789445494348_9b94b4d3b8dd3af1139230f9f4de7ac2",
+      "accountId": "admin-sodacraft-primary",
+      "expiresAt": 1790050294348
+    }
+  ],
+  "lastUpdated": 1789445494348
 }
