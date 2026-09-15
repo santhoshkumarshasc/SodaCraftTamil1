@@ -622,6 +622,38 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                 >
                   {isLoggingIn ? "Authenticating with Database..." : "Sign In to Admin Dashboard"}
                 </button>
+
+                <div
+                  className={`p-3.5 rounded-2xl text-xs border mt-3 ${
+                    isLight ? "bg-slate-50 border-slate-200" : "bg-white/5 border-white/10"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-bold opacity-80">Default Credentials</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUsernameInput("SodaCraftTamil");
+                        setPasswordInput("SodaCraftTamil@952");
+                      }}
+                      className="text-[11px] font-bold text-[oklch(0.75_0.22_25)] hover:underline cursor-pointer"
+                    >
+                      Fill Credentials
+                    </button>
+                  </div>
+                  <p className="text-[11px] opacity-70">
+                    Username:{" "}
+                    <code className="font-mono font-bold text-emerald-400">SodaCraftTamil</code>
+                  </p>
+                  <p className="text-[11px] opacity-70">
+                    Password:{" "}
+                    <code className="font-mono font-bold text-emerald-400">SodaCraftTamil@952</code>
+                  </p>
+                  <p className="text-[11px] opacity-70 mt-1">
+                    Or Quick Passcode:{" "}
+                    <code className="font-mono font-bold text-amber-400">9629</code>
+                  </p>
+                </div>
               </form>
             </div>
           ) : (

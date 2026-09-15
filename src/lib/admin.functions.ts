@@ -17,10 +17,15 @@ import type { Supporter } from "./support.functions";
 
 export const adminLoginAccountFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => {
-    const d = data as { identifier?: string; secret?: string };
+    const d = data as {
+      identifier?: string;
+      secret?: string;
+      passwordOrPasscode?: string;
+      password?: string;
+    };
     return {
       identifier: (d.identifier || "admin").trim(),
-      secret: (d.secret || "").trim(),
+      secret: (d.secret || d.passwordOrPasscode || d.password || "").trim(),
     };
   })
   .handler(async ({ data }) => {
