@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Sliders,
   Copy,
+  Info,
 } from "lucide-react";
 import {
   getAdminConfig,
@@ -70,7 +71,7 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
 
   // Tabs
   const [activeTab, setActiveTab] = useState<
-    "support" | "realtime" | "links" | "accounts" | "security"
+    "support" | "realtime" | "links" | "accounts" | "security" | "access-info"
   >("support");
 
   // Support details & Goal action states
@@ -622,38 +623,6 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                 >
                   {isLoggingIn ? "Authenticating with Database..." : "Sign In to Admin Dashboard"}
                 </button>
-
-                <div
-                  className={`p-3.5 rounded-2xl text-xs border mt-3 ${
-                    isLight ? "bg-slate-50 border-slate-200" : "bg-white/5 border-white/10"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-bold opacity-80">Default Credentials</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setUsernameInput("SodaCraftTamil");
-                        setPasswordInput("SodaCraftTamil@952");
-                      }}
-                      className="text-[11px] font-bold text-[oklch(0.75_0.22_25)] hover:underline cursor-pointer"
-                    >
-                      Fill Credentials
-                    </button>
-                  </div>
-                  <p className="text-[11px] opacity-70">
-                    Username:{" "}
-                    <code className="font-mono font-bold text-emerald-400">SodaCraftTamil</code>
-                  </p>
-                  <p className="text-[11px] opacity-70">
-                    Password:{" "}
-                    <code className="font-mono font-bold text-emerald-400">SodaCraftTamil@952</code>
-                  </p>
-                  <p className="text-[11px] opacity-70 mt-1">
-                    Or Quick Passcode:{" "}
-                    <code className="font-mono font-bold text-amber-400">9629</code>
-                  </p>
-                </div>
               </form>
             </div>
           ) : (
@@ -728,6 +697,19 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span>Security & Passcode</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("access-info")}
+                  className={`flex items-center gap-2 px-4 sm:px-5 py-3 text-xs font-bold border-b-2 transition whitespace-nowrap cursor-pointer ${
+                    activeTab === "access-info"
+                      ? "border-[oklch(0.65_0.24_25)] text-[oklch(0.75_0.22_25)]"
+                      : "border-transparent text-white/60 hover:text-white"
+                  }`}
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  <span>Access, Links & Info</span>
                 </button>
               </div>
 
@@ -1697,6 +1679,401 @@ export function AdminSecretModal({ isOpen, onClose, isLight = false }: AdminSecr
                         Current Master Passcode:{" "}
                         <span className="font-mono text-white/80">{config.secretCode}</span>
                       </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 6: ACCESS, LINKS & INFORMATION */}
+                {activeTab === "access-info" && (
+                  <div className="space-y-6">
+                    {/* Overview Card */}
+                    <div className="p-5 rounded-2xl border border-white/10 bg-white/5 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Info className="w-5 h-5 text-[oklch(0.75_0.22_25)]" />
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                          Master Access, Links & Configuration Information
+                        </h3>
+                      </div>
+                      <p className="text-xs text-white/70 leading-relaxed">
+                        All system entry points, secret URLs, admin configurations, and credentials
+                        information are strictly centralized here inside the authenticated Admin
+                        Panel. Default credential hints are completely hidden from public visitors
+                        on the website.
+                      </p>
+                    </div>
+
+                    {/* 1. Administrative Direct Access URLs */}
+                    <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <KeyRound className="w-4 h-4 text-amber-400" />
+                          <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                            Admin Portal Access Links
+                          </h4>
+                        </div>
+                        <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300">
+                          Token: {urlTokenInput || "custom"}
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        {/* Separate Tab Admin Page */}
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-white/90">
+                              Dedicated Admin Dashboard Page
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">
+                              Full Screen / Separate Route
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <code className="text-xs font-mono text-emerald-400 truncate">
+                              {typeof window !== "undefined" ? window.location.origin : ""}
+                              /admin?token={urlTokenInput || "custom"}
+                            </code>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    `${window.location.origin}/admin?token=${urlTokenInput || "custom"}`,
+                                  );
+                                  toast.success("Copied Dedicated Admin URL!");
+                                }}
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 transition cursor-pointer"
+                                title="Copy URL"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                              <a
+                                href={`/admin?token=${encodeURIComponent(urlTokenInput || "custom")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition flex items-center gap-1 font-bold text-[11px]"
+                                title="Open Link"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>Open</span>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Homepage Secret Token Modal Link */}
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-white/90">
+                              Homepage Secret Popup Trigger Link
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
+                              In-Page Modal
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <code className="text-xs font-mono text-white/80 truncate">
+                              {typeof window !== "undefined" ? window.location.origin : ""}/?token=
+                              {urlTokenInput || "custom"}
+                            </code>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    `${window.location.origin}/?token=${urlTokenInput || "custom"}`,
+                                  );
+                                  toast.success("Copied Homepage Secret Trigger URL!");
+                                }}
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 transition cursor-pointer"
+                                title="Copy URL"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                              <a
+                                href={`/?token=${encodeURIComponent(urlTokenInput || "custom")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition flex items-center gap-1 font-bold text-[11px]"
+                                title="Open Link"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>Open</span>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Support Page Secret Token Modal Link */}
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-white/90">
+                              Support Page Secret Popup Trigger Link
+                            </span>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold">
+                              Supporter Route
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <code className="text-xs font-mono text-blue-300 truncate">
+                              {typeof window !== "undefined" ? window.location.origin : ""}
+                              /support?token={urlTokenInput || "custom"}
+                            </code>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    `${window.location.origin}/support?token=${urlTokenInput || "custom"}`,
+                                  );
+                                  toast.success("Copied Support Page Secret Trigger URL!");
+                                }}
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 transition cursor-pointer"
+                                title="Copy URL"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                              <a
+                                href={`/support?token=${encodeURIComponent(urlTokenInput || "custom")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 transition flex items-center gap-1 font-bold text-[11px]"
+                                title="Open Link"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>Open</span>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Public Facing Website Links & Routes */}
+                    <div className="p-5 rounded-2xl border border-white/10 bg-white/5 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-emerald-400" />
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                          Public Website Routes & Navigation
+                        </h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          {
+                            label: "Home Page",
+                            path: "/",
+                            desc: "Live counter, videos, & supporter list",
+                          },
+                          {
+                            label: "Support / Payment Page",
+                            path: "/support",
+                            desc: "UPI QR payment checkout & verified receipts",
+                          },
+                          {
+                            label: "Contact Us",
+                            path: "/contact",
+                            desc: "Creator contact channels & support email",
+                          },
+                          {
+                            label: "Terms & Conditions",
+                            path: "/terms",
+                            desc: "Legal terms of service & policy",
+                          },
+                          {
+                            label: "Privacy Policy",
+                            path: "/privacy",
+                            desc: "Data privacy & user security guidelines",
+                          },
+                          {
+                            label: "Refund Policy",
+                            path: "/refund",
+                            desc: "Creator donation & cancellation policy",
+                          },
+                        ].map((item) => (
+                          <div
+                            key={item.path}
+                            className="p-3 rounded-xl bg-black/30 border border-white/5 flex items-center justify-between gap-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="font-bold text-xs text-white">{item.label}</div>
+                              <div className="text-[11px] text-white/50 truncate font-mono">
+                                {item.path}
+                              </div>
+                              <div className="text-[10px] text-white/40">{item.desc}</div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    `${window.location.origin}${item.path}`,
+                                  );
+                                  toast.success(`Copied ${item.label} link!`);
+                                }}
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 transition cursor-pointer"
+                                title="Copy URL"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </button>
+                              <a
+                                href={item.path}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 transition"
+                                title="Open link"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 3. Confidential Superadmin & System Credentials Info */}
+                    <div className="p-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-rose-400" />
+                          <h4 className="text-xs font-bold text-rose-300 uppercase tracking-wider">
+                            Internal System Credentials & Master Keys
+                          </h4>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold uppercase">
+                          Admin Confidential
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-white/70">
+                        These credentials allow authorized administrators to authenticate into this
+                        dashboard. They are strictly hidden from public visitors and only stored
+                        here.
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                          <span className="text-[11px] font-bold text-white/60 block">
+                            Superadmin Username:
+                          </span>
+                          <div className="flex items-center justify-between">
+                            <code className="text-xs font-mono font-bold text-emerald-400">
+                              SodaCraftTamil
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText("SodaCraftTamil");
+                                toast.success("Copied username!");
+                              }}
+                              className="text-[11px] text-emerald-400 hover:underline cursor-pointer"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                          <span className="text-[11px] font-bold text-white/60 block">
+                            Superadmin Email:
+                          </span>
+                          <div className="flex items-center justify-between">
+                            <code className="text-xs font-mono font-bold text-emerald-400">
+                              SodaCraftads@gmail.com
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText("SodaCraftads@gmail.com");
+                                toast.success("Copied email!");
+                              }}
+                              className="text-[11px] text-emerald-400 hover:underline cursor-pointer"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                          <span className="text-[11px] font-bold text-white/60 block">
+                            Master Secret Passcode:
+                          </span>
+                          <div className="flex items-center justify-between">
+                            <code className="text-xs font-mono font-bold text-amber-400">
+                              {config.secretCode}
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(config.secretCode);
+                                toast.success("Copied passcode!");
+                              }}
+                              className="text-[11px] text-amber-400 hover:underline cursor-pointer"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                          <span className="text-[11px] font-bold text-white/60 block">
+                            URL Access Token (?token=...):
+                          </span>
+                          <div className="flex items-center justify-between">
+                            <code className="text-xs font-mono font-bold text-purple-400">
+                              {config.urlToken || "custom"}
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(config.urlToken || "custom");
+                                toast.success("Copied URL token!");
+                              }}
+                              className="text-[11px] text-purple-400 hover:underline cursor-pointer"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 4. Support & Payment Configuration Snapshot */}
+                    <div className="p-5 rounded-2xl border border-white/10 bg-white/5 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Sliders className="w-4 h-4 text-blue-400" />
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                          Current Configuration Snapshot
+                        </h4>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div className="p-3 rounded-xl bg-black/30 border border-white/5">
+                          <span className="text-[10px] text-white/50 block">Monthly Goal</span>
+                          <span className="font-extrabold text-white">
+                            ₹{config.monthlyGoal.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-black/30 border border-white/5">
+                          <span className="text-[10px] text-white/50 block">UPI ID</span>
+                          <span className="font-mono font-bold text-white truncate block">
+                            {config.upiId}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-black/30 border border-white/5">
+                          <span className="text-[10px] text-white/50 block">Admin Accounts</span>
+                          <span className="font-extrabold text-white">
+                            {adminAccounts.length} Accounts
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-black/30 border border-white/5">
+                          <span className="text-[10px] text-white/50 block">
+                            Active Verified Payments
+                          </span>
+                          <span className="font-extrabold text-white">
+                            {payments.length} Payments
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

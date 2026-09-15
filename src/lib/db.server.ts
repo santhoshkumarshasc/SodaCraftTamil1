@@ -174,7 +174,7 @@ export function authenticateAdmin(
 
   return {
     success: false,
-    message: "Invalid credentials. Use SodaCraftTamil / SodaCraftTamil@952 or passcode 9629.",
+    message: "Invalid admin username, email, or password/passcode.",
   };
 }
 
